@@ -1,0 +1,3552 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Surviving Isthmus v8.0 Gold Master</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        :root {
+            --gb-darkest: #0f380f;
+            --gb-dark: #306230;
+            --gb-light: #8bac0f;
+            --gb-lightest: #9bbc0f;
+        }
+
+        * { box-sizing: border-box; user-select: none; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
+
+        html, body { 
+            height: 100%; 
+            overflow: hidden;
+            /* Safe area support for notched phones */
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+        }
+
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh;
+            min-height: -webkit-fill-available;
+            font-family: 'Press Start 2P', cursive;
+        }
+
+        /* GAME CONSOLE */
+        #game-console {
+            background: linear-gradient(180deg, #c8c8c8 0%, #a0a0a0 50%, #909090 100%);
+            width: 100%; max-width: 380px;
+            height: 100vh; 
+            height: 100dvh; /* Dynamic viewport height for mobile */
+            max-height: 800px;
+            border-radius: 12px 12px 45px 12px;
+            padding: 6px;
+            padding-bottom: calc(6px + env(safe-area-inset-bottom));
+            display: flex; flex-direction: column;
+            box-shadow: 
+                0 8px 25px rgba(0,0,0,0.5),
+                inset 0 1px 0 rgba(255,255,255,0.3),
+                inset 0 -1px 0 rgba(0,0,0,0.2);
+            border: 2px solid #707070;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* LANDSCAPE MODE - Lock to portrait feel */
+        @media (orientation: landscape) and (max-height: 500px) {
+            #game-console {
+                max-width: 320px;
+                max-height: 100vh;
+                max-height: 100dvh;
+                border-radius: 8px;
+            }
+            .controls-area {
+                padding: 4px 6px 6px 6px !important;
+            }
+            .ctrl-btn {
+                min-height: 38px !important;
+                padding: 5px 3px !important;
+            }
+            .avatar-area {
+                min-height: 50px !important;
+            }
+            #game-log {
+                height: 20px !important;
+                min-height: 20px !important;
+            }
+        }
+
+        /* SMALL SCREENS (iPhone SE, etc) */
+        @media (max-height: 600px) {
+            #game-console {
+                border-radius: 8px 8px 30px 8px;
+            }
+            .stats-container {
+                padding: 2px 4px !important;
+                gap: 2px 6px !important;
+            }
+            .progress-section {
+                padding: 2px 3px !important;
+            }
+            .avatar-area {
+                min-height: 55px !important;
+            }
+            .ctrl-btn {
+                min-height: 40px !important;
+            }
+        }
+
+        /* VERY SMALL SCREENS */
+        @media (max-height: 550px) {
+            .console-label {
+                display: none;
+            }
+            .screen-label {
+                display: none !important;
+            }
+            #game-log {
+                height: 22px !important;
+                min-height: 22px !important;
+            }
+        }
+
+        .console-label {
+            text-align: center;
+            font-size: 5px; color: #505050; letter-spacing: 1px;
+            padding: 2px 0;
+            text-shadow: 0 1px 0 rgba(255,255,255,0.3);
+        }
+
+        /* SCREEN BEZEL */
+        #screen-bezel {
+            background: linear-gradient(180deg, #404040 0%, #303030 100%);
+            border-radius: 6px;
+            padding: 5px;
+            flex: 1;
+            min-height: 0; /* Allow shrinking below content size */
+            display: flex; flex-direction: column;
+            box-shadow: 
+                inset 0 2px 6px rgba(0,0,0,0.6),
+                0 1px 0 rgba(255,255,255,0.1);
+            overflow: hidden;
+            min-height: 0;
+        }
+
+        .screen-label { 
+            font-size: 4px; color: #606060; margin-bottom: 2px; 
+            display: flex; align-items: center; gap: 4px;
+        }
+        .screen-label::before {
+            content: ""; width: 4px; height: 4px; 
+            background: #804040; border-radius: 50%;
+            box-shadow: 0 0 3px #ff4040;
+        }
+
+        /* LCD SCREEN */
+        #lcd-screen {
+            background-color: var(--gb-lightest);
+            border: 3px solid var(--gb-darkest);
+            border-radius: 2px;
+            flex: 1;
+            position: relative;
+            display: flex; flex-direction: column;
+            overflow: hidden;
+            min-height: 0;
+            box-shadow: inset 0 0 15px rgba(0,0,0,0.1);
+        }
+
+        /* LCD SCANLINE EFFECT */
+        #lcd-screen::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 0, 0, 0.03) 2px,
+                rgba(0, 0, 0, 0.03) 4px
+            );
+            pointer-events: none;
+            z-index: 60;
+        }
+
+        /* STATE COLORS */
+        #lcd-screen.state-normal { background-color: var(--gb-lightest); }
+        #lcd-screen.state-tired { background-color: #7a8a5f; }
+        #lcd-screen.state-hyper { background-color: #c0cc5f; animation: hyperPulse 0.2s infinite; }
+        #lcd-screen.state-stressed { background-color: #9a7a5f; }
+        #lcd-screen.state-critical { background-color: #8a5a4a; animation: criticalPulse 0.4s infinite; }
+        
+        @keyframes hyperPulse { 0%,100%{filter:brightness(1)} 50%{filter:brightness(1.15)} }
+        @keyframes criticalPulse { 0%,100%{filter:brightness(1)} 50%{filter:brightness(0.7)} }
+
+        /* FLASH */
+        .flash-overlay {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            pointer-events: none; z-index: 100;
+            opacity: 0; transition: opacity 0.1s;
+        }
+        .flash-overlay.good { background: rgba(50, 200, 50, 0.5); }
+        .flash-overlay.bad { background: rgba(200, 50, 50, 0.5); }
+        .flash-overlay.warn { background: rgba(200, 150, 50, 0.5); }
+        .flash-overlay.active { opacity: 1; }
+
+        #lcd-screen.shake { animation: shake 0.3s ease; }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-4px); }
+            75% { transform: translateX(4px); }
+        }
+
+        /* SCREENS */
+        .game-screen { 
+            display: none; flex-direction: column; 
+            height: 100%; overflow: hidden;
+            opacity: 0;
+            transition: opacity 0.15s ease-in-out;
+        }
+        .game-screen.active { display: flex; opacity: 1; }
+
+        /* TITLE */
+        #title-screen { justify-content: center; align-items: center; text-align: center; padding: 8px; }
+        .title-logo { 
+            font-size: 11px; 
+            line-height: 1.5; 
+            color: var(--gb-darkest); 
+            margin-bottom: 8px;
+            text-shadow: 
+                2px 2px 0 var(--gb-dark),
+                -1px -1px 0 var(--gb-light);
+            animation: titlePulse 2s ease-in-out infinite;
+        }
+        @keyframes titlePulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+        .title-tagline {
+            font-size: 4px;
+            color: var(--gb-darkest);
+            line-height: 1.7;
+            margin-bottom: 10px;
+            max-width: 95%;
+            opacity: 0.95;
+        }
+        .title-tagline strong {
+            color: var(--gb-darkest);
+            font-size: 5px;
+        }
+        .title-sub { font-size: 4px; color: var(--gb-dark); margin-bottom: 8px; line-height: 1.5; opacity: 0.8; }
+        .time-select { margin: 6px 0; }
+        .time-select label { font-size: 4px; color: var(--gb-dark); display: block; margin-bottom: 3px; }
+        .time-btn {
+            background: var(--gb-light); border: 2px solid var(--gb-darkest);
+            padding: 5px 8px; margin: 2px; font-family: 'Press Start 2P';
+            font-size: 4px; cursor: pointer;
+        }
+        .time-btn.selected { background: var(--gb-darkest); color: var(--gb-lightest); }
+        .blink-text { font-size: 5px; animation: blink 0.7s infinite; margin-top: 8px; }
+        @keyframes blink { 0%,50%{opacity:1} 51%,100%{opacity:0} }
+
+        /* CAREER */
+        #career-screen { padding: 4px; }
+        .career-title { font-size: 5px; text-align: center; margin-bottom: 4px; color: var(--gb-darkest); }
+        .career-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; flex: 1; }
+        .career-btn {
+            background: var(--gb-light); border: 2px solid var(--gb-darkest);
+            padding: 5px 2px; font-family: 'Press Start 2P'; font-size: 4px;
+            color: var(--gb-darkest); cursor: pointer;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+        }
+        .career-btn:active { background: var(--gb-dark); color: var(--gb-lightest); }
+        .career-icon { font-size: 18px; }
+        .career-name { text-align: center; line-height: 1.2; }
+
+        /* MAIN GAME */
+        #main-screen { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+
+        .top-bar {
+            display: flex; justify-content: space-between; align-items: center;
+            font-size: 5px; padding: 2px 3px;
+            border-bottom: 2px solid var(--gb-darkest);
+            background: var(--gb-light);
+            flex-shrink: 0;
+        }
+        .career-badge { background: var(--gb-darkest); color: var(--gb-lightest); padding: 1px 3px; font-size: 4px; }
+        .period-badge { background: var(--gb-dark); color: var(--gb-lightest); padding: 1px 4px; font-size: 4px; }
+        .period-badge.lunch { background: #5a4a2a; }
+
+        .status-bar {
+            display: flex; gap: 2px; padding: 2px 3px;
+            background: rgba(0,0,0,0.1);
+            flex-wrap: wrap; justify-content: center;
+            flex-shrink: 0; min-height: 12px;
+        }
+        .status-badge {
+            font-size: 3px; padding: 1px 3px;
+            border-radius: 2px; display: none;
+        }
+        .status-badge.active { display: inline-block; }
+        .status-badge.cafeina { background: #604020; color: #fff; }
+        .status-badge.bano { background: #204060; color: #fff; }
+        .status-badge.lleno { background: #406020; color: #fff; }
+        .status-badge.sleep { background: #403060; color: #fff; }
+        .status-badge.distra { background: #303a60; color: #fff; }
+        .status-badge.sospecha { background: #604040; color: #fff; }
+        .status-badge.level2 { animation: badgePulse 0.3s infinite; }
+        @keyframes badgePulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+        /* AVATAR */
+        .avatar-area {
+            flex: 1; display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            position: relative; min-height: 70px; overflow: hidden;
+        }
+        
+        .avatar-art {
+            font-size: 10px; text-align: center; line-height: 1.05;
+            white-space: pre; color: var(--gb-darkest);
+        }
+        
+        .avatar-art.idle { animation: idle 2s ease-in-out infinite; }
+        .avatar-art.studying { animation: studying 0.6s ease infinite; }
+        .avatar-art.eating { animation: eating 0.4s ease infinite; }
+        .avatar-art.tired { animation: tired 3s ease infinite; opacity: 0.8; }
+        .avatar-art.hyper { animation: hyper 0.1s ease infinite; }
+        .avatar-art.stressed { animation: stressed 0.15s ease infinite; }
+        .avatar-art.sleeping { animation: sleeping 2s ease infinite; }
+        .avatar-art.bathroom { animation: bathroom 0.25s ease infinite; }
+
+        @keyframes idle { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-2px)} }
+        @keyframes studying { 0%,100%{transform:rotate(-1deg)} 50%{transform:rotate(1deg)} }
+        @keyframes eating { 0%,100%{transform:scaleY(1)} 50%{transform:scaleY(0.92)} }
+        @keyframes tired { 0%,100%{transform:translateY(0)} 50%{transform:translateY(3px)} }
+        @keyframes hyper { 0%,100%{transform:translateX(-2px)} 50%{transform:translateX(2px)} }
+        @keyframes stressed { 0%,100%{transform:translateX(0)} 50%{transform:translateX(-3px)} }
+        @keyframes sleeping { 0%,100%{transform:scale(1)} 50%{transform:scale(1.02)} }
+        @keyframes bathroom { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-3px)} }
+
+        .avatar-speech {
+            font-size: 4px; margin-top: 3px;
+            background: var(--gb-light); padding: 2px 5px;
+            border: 1px solid var(--gb-dark);
+            max-width: 90%; text-align: center; line-height: 1.3;
+        }
+        .avatar-speech.warning { background: #a08040; }
+        .avatar-speech.critical { background: #804040; color: #fff; }
+        .avatar-speech.prof { background: #4040a0; color: #fff; }
+
+        .location-tag { 
+            font-size: 4px; background: var(--gb-darkest); color: var(--gb-lightest); 
+            padding: 2px 5px; margin-top: 2px; 
+        }
+
+        /* STATS */
+        .stats-container {
+            padding: 4px 5px;
+            border-top: 2px solid var(--gb-darkest);
+            border-bottom: 2px solid var(--gb-darkest);
+            display: grid; grid-template-columns: 1fr 1fr; gap: 3px 8px;
+            background: rgba(139, 172, 15, 0.4);
+            flex-shrink: 0;
+        }
+        .stat-row { display: flex; align-items: center; gap: 1px; font-size: 4px; }
+        .stat-icon { font-size: 6px; width: 10px; text-align: center; }
+        .stat-label { width: 32px; color: var(--gb-darkest); font-size: 3px; }
+        .stat-bar { flex: 1; height: 6px; border: 1px solid var(--gb-darkest); background: var(--gb-light); }
+        .stat-fill { height: 100%; transition: width 0.3s, background-color 0.3s; }
+        .stat-fill.high { background: #2a6a2a; }
+        .stat-fill.med { background: var(--gb-darkest); }
+        .stat-fill.low { background: #6a5a2a; }
+        .stat-fill.critical { background: #6a2a2a; animation: barCritical 0.3s infinite; }
+        @keyframes barCritical { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        .stat-val { font-size: 4px; width: 16px; text-align: right; }
+
+        /* PROGRESS */
+        .progress-section { 
+            padding: 2px 3px;
+            background: rgba(139, 172, 15, 0.3);
+            font-size: 4px;
+            flex-shrink: 0;
+        }
+        .progress-row { display: flex; justify-content: space-between; }
+        .knowledge-row { margin-top: 1px; }
+        .knowledge-bar { height: 7px; border: 2px solid var(--gb-darkest); background: var(--gb-light); margin-top: 1px; }
+        .knowledge-fill { height: 100%; background: var(--gb-darkest); transition: width 0.3s; }
+
+        /* LOG */
+        #game-log {
+            height: 26px; min-height: 26px;
+            font-size: 4px; overflow: hidden;
+            padding: 2px 3px;
+            background: rgba(139, 172, 15, 0.2);
+            flex-shrink: 0;
+        }
+        .log-entry { line-height: 1.2; }
+        .log-entry.story { color: #2a2a5a; }
+        .log-entry.good { color: #1a4a1a; }
+        .log-entry.bad { color: #5a1a1a; }
+        .log-entry.warn { color: #5a4a1a; }
+        .log-entry.prof { color: #4a1a4a; font-weight: bold; }
+
+        /* DECISION MODAL */
+        #decision-modal {
+            position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 56, 15, 0.98);
+            display: none; flex-direction: column;
+            justify-content: center; align-items: center;
+            z-index: 50; padding: 8px; text-align: center;
+            overflow: hidden;
+        }
+        #decision-modal.active { display: flex; }
+        
+        .decision-icon { font-size: 28px; margin-bottom: 5px; }
+        .decision-title { font-size: 6px; color: var(--gb-lightest); margin-bottom: 5px; line-height: 1.3; }
+        .decision-desc { font-size: 4px; color: var(--gb-light); margin-bottom: 4px; line-height: 1.4; }
+                .decision-hint { font-size: 3px; color: var(--gb-lightest); opacity: 0.85; margin-bottom: 8px; line-height: 1.4; }
+        .decision-buttons:empty { display: none; }
+
+        .idle-controls { grid-column: 1 / -1; text-align: center; font-size: 4px; opacity: 0.65; padding: 16px 0; user-select: none; }
+.decision-buttons { display: flex; flex-direction: column; gap: 5px; width: 100%; }
+        .decision-btn {
+            background: var(--gb-light); color: var(--gb-darkest);
+            border: 2px solid var(--gb-darkest); padding: 6px 5px;
+            font-family: 'Press Start 2P'; font-size: 4px; cursor: pointer;
+            text-align: center; line-height: 1.3;
+            touch-action: manipulation;
+            -webkit-touch-callout: none;
+        }
+        .decision-btn:active { background: var(--gb-dark); color: var(--gb-lightest); }
+        .decision-btn .effect { font-size: 3px; opacity: 0.7; margin-top: 2px; display: block; }
+
+        /* FLOATERS */
+        .floater {
+            position: absolute; font-weight: bold; pointer-events: none; z-index: 40;
+            animation: floatUp 1s ease-out forwards;
+            text-shadow: 1px 1px 0 #fff;
+        }
+        .floater.good { color: #1a5a1a; font-size: 11px; }
+        .floater.bad { color: #5a1a1a; font-size: 11px; }
+        .floater.warn { color: #5a4a1a; font-size: 9px; }
+        @keyframes floatUp { 
+            0% { transform: translateY(0); opacity: 1; } 
+            100% { transform: translateY(-35px); opacity: 0; } 
+        }
+
+        /* ═══════════════════════════════════════════════════════════
+           RETRO BUTTON REDESIGN - Game Boy Style!
+           ═══════════════════════════════════════════════════════════ */
+        .controls-area { 
+            padding: 8px 10px 10px 10px;
+            background: linear-gradient(180deg, #b0b0b0 0%, #909090 100%);
+            border-radius: 0 0 10px 10px;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        /* Speaker grille hint (Game Boy aesthetic) */
+        .controls-area::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            right: 12px;
+            width: 45px;
+            height: 3px;
+            background: repeating-linear-gradient(
+                90deg,
+                #707070 0px,
+                #707070 2px,
+                #909090 2px,
+                #909090 4px
+            );
+            border-radius: 1px;
+            opacity: 0.6;
+        }
+
+        .controls-grid { 
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 6px; 
+        }
+
+        /* RETRO BUTTON BASE */
+        .ctrl-btn {
+            background: linear-gradient(180deg, #606060 0%, #404040 50%, #303030 100%);
+            border: none;
+            border-radius: 8px;
+            padding: 8px 4px;
+            font-family: 'Press Start 2P'; 
+            font-size: 4px; 
+            color: #d0d0d0;
+            cursor: pointer; 
+            display: flex; flex-direction: column;
+            align-items: center; gap: 2px; 
+            min-height: 44px; 
+            justify-content: center;
+            position: relative;
+            box-shadow: 
+                0 4px 0 #202020,
+                0 5px 3px rgba(0,0,0,0.4),
+                inset 0 1px 0 rgba(255,255,255,0.1);
+            transition: all 0.05s;
+            text-shadow: 0 1px 1px rgba(0,0,0,0.5);
+            /* Touch optimizations */
+            touch-action: manipulation;
+            -webkit-touch-callout: none;
+        }
+
+        .ctrl-btn:active:not(:disabled) { 
+            transform: translateY(3px);
+            box-shadow: 
+                0 1px 0 #202020,
+                0 2px 2px rgba(0,0,0,0.3),
+                inset 0 1px 0 rgba(255,255,255,0.1);
+        }
+
+        .ctrl-btn:active:not(:disabled)::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 80%; height: 80%;
+            transform: translate(-50%, -50%);
+            background: radial-gradient(circle, rgba(255,255,255,0.4) 0%, transparent 70%);
+            border-radius: 6px;
+            animation: buttonFlash 0.15s ease-out;
+        }
+
+        @keyframes buttonFlash {
+            0% { opacity: 1; transform: translate(-50%, -50%) scale(0.8); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(1.2); }
+        }
+
+        .ctrl-btn:disabled { 
+            opacity: 0.4; 
+            cursor: not-allowed; 
+        }
+
+        .ctrl-btn.wide { grid-column: span 3; }
+        .ctrl-btn.span2 { grid-column: span 2; }
+
+        /* PRIMARY BUTTON - Green (A Button style) */
+        .ctrl-btn.primary {
+            background: linear-gradient(180deg, #5a8a5a 0%, #3a6a3a 50%, #2a5a2a 100%);
+            color: #e0ffe0;
+            box-shadow: 
+                0 4px 0 #1a3a1a,
+                0 5px 3px rgba(0,0,0,0.4),
+                inset 0 1px 0 rgba(255,255,255,0.2);
+        }
+        .ctrl-btn.primary:active:not(:disabled) {
+            box-shadow: 
+                0 1px 0 #1a3a1a,
+                0 2px 2px rgba(0,0,0,0.3),
+                inset 0 1px 0 rgba(255,255,255,0.2);
+        }
+
+        /* SECONDARY BUTTON - Red/Orange (B Button style) */
+        .ctrl-btn.secondary {
+            background: linear-gradient(180deg, #8a6a4a 0%, #6a4a2a 50%, #5a3a1a 100%);
+            color: #ffe0c0;
+            box-shadow: 
+                0 4px 0 #3a2a1a,
+                0 5px 3px rgba(0,0,0,0.4),
+                inset 0 1px 0 rgba(255,255,255,0.2);
+        }
+
+        /* WARNING BUTTON - Yellow */
+        .ctrl-btn.warning {
+            background: linear-gradient(180deg, #8a7a2a 0%, #6a5a1a 50%, #5a4a0a 100%);
+            color: #ffffe0;
+            animation: warnPulse 0.5s infinite;
+        }
+        @keyframes warnPulse { 0%,100%{opacity:1} 50%{opacity:0.8} }
+
+        /* DANGER BUTTON - Red pulse */
+        .ctrl-btn.danger {
+            background: linear-gradient(180deg, #8a3a3a 0%, #6a2a2a 50%, #5a1a1a 100%);
+            color: #ffe0e0;
+            animation: dangerPulse 0.3s infinite;
+        }
+        @keyframes dangerPulse { 0%,100%{opacity:1} 50%{opacity:0.7} }
+
+        .btn-icon { font-size: 12px; filter: drop-shadow(0 1px 1px rgba(0,0,0,0.3)); }
+        .btn-label { font-size: 4px; text-align: center; }
+        .btn-sub { font-size: 3px; opacity: 0.7; }
+        
+        .btn-badge { 
+            position: absolute; top: 2px; right: 4px; 
+            background: #a02020; color: #fff;
+            font-size: 4px; padding: 1px 3px; border-radius: 3px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+
+        /* END SCREENS */
+        .end-screen { justify-content: center; align-items: center; text-align: center; padding: 8px; }
+        .end-title { font-size: 8px; margin-bottom: 8px; color: var(--gb-darkest); line-height: 1.3; }
+        .grade-display {
+            font-size: 9px; padding: 8px 12px; border: 3px solid var(--gb-darkest);
+            margin-bottom: 8px;
+        }
+        .grade-display.pass { background: #4a7c4a; color: #fff; }
+        .grade-display.honor{border-color:#ffd24a;color:#ffd24a;box-shadow:0 0 10px rgba(255,210,74,.35);}
+
+.grade-display.fail { background: #7c4a4a; color: #fff; }
+        .final-stats { font-size: 4px; line-height: 1.7; margin-bottom: 8px; text-align: left; }
+        .restart-btn {
+            background: var(--gb-darkest); color: var(--gb-lightest);
+            border: none; padding: 8px 14px; font-family: 'Press Start 2P';
+            font-size: 5px; cursor: pointer;
+            border-radius: 4px;
+            box-shadow: 0 3px 0 #050f05;
+            touch-action: manipulation;
+            -webkit-touch-callout: none;
+        }
+        .restart-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #050f05; }
+
+        .end-tagline {
+            font-size: 4px;
+            color: var(--gb-dark);
+            margin-top: 10px;
+            opacity: 0.85;
+            line-height: 1.6;
+            font-style: italic;
+            max-width: 90%;
+        }
+        .end-tagline.honor {
+            color: #ffd24a;
+            opacity: 1;
+            text-shadow: 0 0 5px rgba(255,210,74,.3);
+        }
+
+        .weekend-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; width: 100%; margin: 6px 0; }
+        .weekend-btn {
+            background: var(--gb-light); border: 2px solid var(--gb-darkest);
+            padding: 6px 4px; font-family: 'Press Start 2P'; font-size: 4px;
+            cursor: pointer; text-align: center; line-height: 1.3;
+        }
+        .weekend-btn:active { background: var(--gb-dark); color: var(--gb-lightest); }
+    </style>
+</head>
+<body>
+
+<div id="game-console">
+    <div class="console-label">★ SURVIVING ISTHMUS v8.0 ★ ISTHMUS LABS ★</div>
+    
+    <div id="screen-bezel">
+        <div class="screen-label">POWER</div>
+        
+        <div id="lcd-screen" class="state-normal">
+            <div class="flash-overlay" id="flash-overlay"></div>
+
+            <div id="decision-modal">
+                <div class="decision-icon" id="decision-icon">❓</div>
+                <div class="decision-title" id="decision-title">DECISIÓN</div>
+                <div class="decision-desc" id="decision-desc"></div>
+                <div class="decision-hint" id="decision-hint"></div>
+                <div class="decision-buttons" id="decision-buttons"></div>
+            </div>
+
+            <!-- TITLE -->
+            <div class="game-screen active" id="title-screen">
+                <div class="title-logo">🎓 SURVIVING<br>ISTHMUS</div>
+                <div class="title-tagline">
+                    El inicio es para todos.<br>
+                    La gloria es para pocos.<br>
+                    <strong>¿Tienes lo necesario?</strong>
+                </div>
+                <div class="title-sub">
+                    2 semanas de diseño intensivo<br>
+                    1 entrega final
+                </div>
+                <div class="time-select">
+                    <label>⏱️ Velocidad:</label>
+                    <button class="time-btn" onclick="setTime(90, event)">RÁPIDO</button>
+                    <button class="time-btn selected" onclick="setTime(150, event)">NORMAL</button>
+                    <button class="time-btn" onclick="setTime(240, event)">LARGO</button>
+                </div>
+                <div class="blink-text">[ TOCA PARA JUGAR ]</div>
+            </div>
+
+            <!-- CAREER -->
+            <div class="game-screen" id="career-screen">
+                <div class="career-title">ELIGE TU CARRERA</div>
+                <div class="career-grid">
+                    <button class="career-btn" onclick="selectCareer('arq')">
+                        <span class="career-icon">🏛️</span>
+                        <span class="career-name">ARQUITECTURA</span>
+                    </button>
+                    <button class="career-btn" onclick="selectCareer('di')">
+                        <span class="career-icon">⚙️</span>
+                        <span class="career-name">DISEÑO<br>INDUSTRIAL</span>
+                    </button>
+                    <button class="career-btn" onclick="selectCareer('int')">
+                        <span class="career-icon">🛋️</span>
+                        <span class="career-name">ARQ.<br>INTERIOR</span>
+                    </button>
+                    <button class="career-btn" onclick="selectCareer('com')">
+                        <span class="career-icon">🎨</span>
+                        <span class="career-name">COM.<br>VISUAL</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- MAIN -->
+            <div class="game-screen" id="main-screen">
+                <div class="top-bar">
+                    <div><span class="career-badge" id="career-badge">ARQ</span> <span id="day-display">DÍA 1</span></div>
+                    <span class="period-badge" id="period-badge">📚 CLASE</span>
+                    <span id="clock-display">09:00</span>
+                </div>
+
+                <div class="status-bar">
+                    <span class="status-badge cafeina" id="badge-cafeina">☕CAFEÍNA</span>
+                    <span class="status-badge bano" id="badge-bano">🚽BAÑO</span>
+                    <span class="status-badge lleno" id="badge-lleno">🍔LLENO</span>
+                    <span class="status-badge sleep" id="badge-sleep">😴SUEÑO</span>
+                    <span class="status-badge distra" id="badge-distra">📱DISTRA</span>
+                    <span class="status-badge sospecha" id="badge-sospecha">👀PROFE</span>
+                </div>
+
+                <div class="avatar-area">
+                    <div class="avatar-art idle" id="avatar"></div>
+                    <div class="avatar-speech" id="avatar-speech">En clase...</div>
+                    <div class="location-tag" id="location-tag">📍 AULA</div>
+                </div>
+
+                <div class="stats-container">
+                    <div class="stat-row">
+                        <span class="stat-icon">⚡</span>
+                        <span class="stat-label">ENERGÍA</span>
+                        <div class="stat-bar"><div class="stat-fill med" id="bar-energy" style="width:100%"></div></div>
+                        <span class="stat-val" id="val-energy">100</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-icon">🧠</span>
+                        <span class="stat-label">CORDURA</span>
+                        <div class="stat-bar"><div class="stat-fill med" id="bar-sanity" style="width:100%"></div></div>
+                        <span class="stat-val" id="val-sanity">100</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-icon">🍔</span>
+                        <span class="stat-label">HAMBRE</span>
+                        <div class="stat-bar"><div class="stat-fill med" id="bar-hunger" style="width:80%"></div></div>
+                        <span class="stat-val" id="val-hunger">80</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-icon">💧</span>
+                        <span class="stat-label">AGUA</span>
+                        <div class="stat-bar"><div class="stat-fill med" id="bar-water" style="width:80%"></div></div>
+                        <span class="stat-val" id="val-water">80</span>
+                    </div>
+                </div>
+
+                <div class="progress-section">
+                    <div class="progress-row">
+                        <span>📚 Clases: <span id="classes">0</span>/10</span>
+                        <span>📝 Tareas: <span id="homework">0</span></span>
+                    </div>
+                    <div class="knowledge-row">
+                        <span>🎓 CONOCIMIENTO: <span id="knowledge-pct">0%</span></span>
+                        <div class="knowledge-bar"><div class="knowledge-fill" id="bar-knowledge" style="width:0%"></div></div>
+                    </div>
+                    <div class="knowledge-row">
+                        <span>📋 ENTREGA: <span id="entrega-pct">0%</span></span>
+                        <div class="knowledge-bar"><div class="knowledge-fill" id="bar-entrega" style="width:0%"></div></div>
+                    </div>
+                </div>
+
+                <div id="game-log">
+                    <div class="log-entry story">> Tu aventura comienza...</div>
+                </div>
+            </div>
+
+            <!-- WEEKEND -->
+            <div class="game-screen end-screen" id="weekend-screen">
+                <div class="end-title">🌴 FIN DE SEMANA</div>
+                <div style="font-size:5px;margin:5px 0;">Acciones: <span id="weekend-actions">3</span></div>
+                <div class="weekend-grid">
+                    <button class="weekend-btn" onclick="weekendAction('sleep')">😴 DORMIR</button>
+                    <button class="weekend-btn" onclick="weekendAction('friends')">🎉 AMIGOS</button>
+                    <button class="weekend-btn" onclick="weekendAction('study')">📖 ESTUDIAR</button>
+                    <button class="weekend-btn" onclick="weekendAction('chill')">🎮 RELAJAR</button>
+                </div>
+                <button class="restart-btn" onclick="endWeekend()">SEMANA 2 →</button>
+            </div>
+
+            <!-- ENTREGA -->
+            <div class="game-screen end-screen" id="entrega-screen">
+                <div class="end-title">📋 ENTREGA FINAL</div>
+                <div class="grade-display" id="grade-display">...</div>
+                <div class="final-stats" id="final-stats"></div>
+                <button class="restart-btn" onclick="location.reload()">🔄 JUGAR DE NUEVO</button>
+                <div class="end-tagline" id="entrega-tagline"></div>
+            </div>
+
+            <!-- GAME OVER -->
+            <div class="game-screen end-screen" id="gameover-screen">
+                <div class="end-title">💀 GAME OVER</div>
+                <div class="avatar-art" style="font-size:11px;margin:6px 0;white-space:pre;"> ╭───╮
+ │X_X│
+ ╰─┬─╯
+   │
+  ╱ ╲</div>
+                <div class="final-stats" id="gameover-reason"></div>
+                <button class="restart-btn" onclick="location.reload()">🔄 REINTENTAR</button>
+                <div class="end-tagline">
+                    "El inicio es para todos.<br>
+                    La gloria es para pocos."
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls-area" id="controls-area">
+        <div class="controls-grid" id="controls-grid"></div>
+    </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   SURVIVING ISTHMUS v8.0 GOLD MASTER — ISTHMUS LABS
+   
+   Changes from v7.4:
+   - Added branding tagline to Title, Entrega, and Game Over screens
+   - LCD scanline effect for authentic Game Boy feel
+   - Button press visual feedback
+   - Screen transition fades
+   - Fixed lates display (now shows /3 correctly)
+   - Fixed delivery timer fallback (no more stranded money)
+   - Enhanced Game Over messages with personality
+   - Improved log message tone consistency
+   - Typography and spacing polish
+   
+   Mobile Optimizations:
+   - Media queries for landscape and small screens
+   - Safe area insets for notched phones (iPhone X+)
+   - Dynamic viewport height (100dvh)
+   - Touch-action manipulation on all buttons
+   - Speaker grille aesthetic detail
+   - Flex layout fixes for controls visibility
+   ═══════════════════════════════════════════════════════════════ */
+
+let dayLength = 150;
+
+function setTime(secs, e) {
+    dayLength = secs;
+    document.querySelectorAll('.time-btn').forEach(b => b.classList.remove('selected'));
+    if (e && e.target) e.target.classList.add('selected');
+}
+
+const CAREERS = {
+    arq: { name: 'ARQUITECTURA', badge: 'ARQ', prof: 'Arq. Méndez' },
+    di: { name: 'DISEÑO INDUSTRIAL', badge: 'DI', prof: 'DI. Castillo' },
+    int: { name: 'ARQ. INTERIOR', badge: 'INT', prof: 'Arq. Vega' },
+    com: { name: 'COM. VISUAL', badge: 'COM', prof: 'Lic. Ruiz' }
+};
+
+const STORIES = {
+    class: [
+        'El profe explica el concepto...',
+        'Tomando apuntes importantes...',
+        'Analizando el proyecto...',
+        'Buscando inspiración...',
+        'Crítica grupal del trabajo...',
+        'Presentación de casos...'
+    ],
+    tired: ['Los ojos se me cierran...', 'Necesito un café...', 'No puedo concentrarme...', 'Todo se ve borroso...'],
+    hyper: ['¡¡MUCHA ENERGÍA!!', '¡No puedo quedarme quieto!', 'Manos temblando...', '¡CAFEÍNA AL MÁXIMO!'],
+    bathroom: ['¡Necesito ir al baño!', 'No aguanto más...', '¡Es urgente!', 'Me voy a explotar...'],
+    hungry: ['Mi estómago ruge...', '¿Cuándo es almuerzo?', 'Muero de hambre...', 'No puedo pensar...'],
+    lunch: ['Hora de comer', '¿Qué hay en La Plaza?', 'Break merecido', 'A recargar energía'],
+    full: ['Comí demasiado...', 'Me dio sueño...', 'Food coma...'],
+    sleeping: ['zzZ...', 'Descansando...', 'Recuperando energía...']
+};
+
+const CHARS = {
+    normal: ` ╭───╮\n │°_°│\n ╰─┬─╯\n  ╱│╲\n  ╱ ╲`,
+    studying: ` ╭───╮\n │•_•│✎\n ╰─┬─╯\n  ╱│╲\n  ╱ ╲`,
+    tired: ` ╭───╮\n │u_u│~\n ╰─┬─╯\n   │\n  ╱ ╲`,
+    hyper: ` ╭───╮\n │◉◉│!!\n ╰─┬─╯\n ╱╱│╲╲\n  ╱ ╲`,
+    hungry: ` ╭───╮\n │;_;│\n ╰─┬─╯\n  ?│\n  ╱ ╲`,
+    bathroom: ` ╭───╮\n │>_<│💦\n ╰─┬─╯\n  ╱│!\n  ╱ ╲`,
+    eating: ` ╭───╮\n │^o^│🍕\n ╰─┬─╯\n  ╱│╲\n  ╱ ╲`,
+    sleeping: ` ╭───╮\n │-_-│zZ\n ╰─┬─╯\n   │\n  ╱ ╲`,
+    stressed: ` ╭───╮\n │@_@│?!\n ╰─┬─╯\n /╱│╲\\\n  ╱ ╲`,
+    happy: ` ╭───╮\n │^_^│♪\n ╰─┬─╯\n  ╱│╲\n  ╱ ╲`,
+    dead: ` ╭───╮\n │X_X│\n ╰─┬─╯\n   │\n  ╱ ╲`
+};
+
+// STATE
+const state = {
+    screen: 'title',
+    career: null,
+    careerData: null,
+    
+    day: 1, dayOfWeek: 0, week: 1, time: 0,
+    
+    energy: 100, sanity: 100, hunger: 80, water: 80, knowledge: 0,
+    classes: 0, homework: 0, lates: 0, absences: 0,
+    entrega: 0, participation: 0,
+    schedule: 'late', lunchStart: 0.4, lunchEnd: 0.6, classroom: 'AULA',
+    weekendParty: 0,
+    forceFail: false, forceReason: '',
+    
+    // Consequence counters
+    coffeeCount: 0,
+    waterCount: 0,
+    foodCount: 0,
+    sleepCount: 0, // NEW: Track sleep during class!
+
+    // Gen-Z temptation meters (0..100)
+    distraction: 0,
+    teacherSuspicion: 0,
+    foundation: 0,
+    exerciseToday: false,
+    progressCheckToday: false,
+
+    // Class moment flavor (lecture vs workshop)
+    classMode: 'lecture',
+    // If you put the phone away, temptations are reduced until this time
+    phoneAwayUntilAt: null,
+
+    // Delayed consequences from temptations
+    forcedEventAt: null,
+    forcedEventType: null,
+    lastNotesAt: 0,
+    // Daily flavor
+    weather: 'nublado',
+    
+    inClass: true, atLunch: false, isResting: false,
+    classToday: false, homeworkToday: false,
+    
+    cooldowns: {},
+    weekendActions: 3,
+    gameOver: false,
+    paused: false,
+    // Decision-driven mode (buttons only during prompts)
+    nextPromptAt: 0,
+    awaitingActionDecision: null,
+    nextWakePromptAt: null,
+    promptCount: 0,
+
+    // Speech bubble throttle (prevents flicker on render)
+    _mood: null,
+    _speech: 'En clase...',
+    _speechClass: '',
+    _speechNextAt: 0,
+    money: 25,
+    deliveryPending: false,
+    deliveryArrivesAt: null,
+    deliveryReady: false,
+    deliveryCost: 0,
+    inNap: false,
+    restUntilAt: null,
+    napAlarmSet: false,
+    dayEndAt: 1.0,
+    dayEndQueued: false,
+    dayEndExitAt: null,
+    dayEndReason: '',
+    teacherAllowsEarlyReleaseToday: false,
+    counterOfferActive: false,
+    earlyReleaseChecked: false,
+    lunchJustStarted: false,
+    latesAtDayStart: 0,
+    suspicionAtDayStart: 0,
+    hangover: false,
+};
+
+// DOM
+const $ = id => document.getElementById(id);
+const DOM = {
+    screen: $('lcd-screen'),
+    flash: $('flash-overlay'),
+    modal: $('decision-modal'),
+    modalIcon: $('decision-icon'),
+    modalTitle: $('decision-title'),
+    modalDesc: $('decision-desc'),
+    modalHint: $('decision-hint'),
+    modalBtns: $('decision-buttons'),
+    avatar: $('avatar'),
+    speech: $('avatar-speech'),
+    location: $('location-tag'),
+    period: $('period-badge'),
+    controls: $('controls-grid'),
+    controlsArea: $('controls-area'),
+    log: $('game-log')
+};
+
+// UTILITIES
+function flash(type) {
+    DOM.flash.className = 'flash-overlay ' + type + ' active';
+    setTimeout(() => DOM.flash.classList.remove('active'), 200);
+}
+
+function shake() {
+    DOM.screen.classList.remove('shake');
+    void DOM.screen.offsetWidth;
+    DOM.screen.classList.add('shake');
+}
+
+function spawnFloat(text, type) {
+    const el = document.createElement('div');
+    el.className = 'floater ' + type;
+    el.textContent = text;
+    el.style.left = `calc(50% + ${(Math.random()*40)-20}px)`;
+    el.style.top = `calc(35% + ${(Math.random()*20)-10}px)`;
+    DOM.screen.appendChild(el);
+    setTimeout(() => el.remove(), 1000);
+}
+
+function log(msg, type = '') {
+    const el = document.createElement('div');
+    el.className = 'log-entry ' + type;
+    el.textContent = '> ' + msg;
+    DOM.log.appendChild(el);
+    while (DOM.log.children.length > 4) DOM.log.removeChild(DOM.log.firstChild);
+}
+
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function clamp(val, min = 0, max = 100) { return Math.max(min, Math.min(max, val)); }
+
+function clamp01(x) { return Math.max(0, Math.min(1, x)); }
+
+// Convert in-game time fraction (0..1 = 9:00..17:00) into HH:MM clock string.
+// Supports values outside 0..1 (e.g., waking late after 17:00).
+function timeToClock(t) {
+    const minutesFromStart = Math.round((Number(t) || 0) * 480);
+    const totalMinutes = (9 * 60) + minutesFromStart;
+    const h = Math.floor(totalMinutes / 60);
+    const m = Math.floor(totalMinutes % 60);
+    // keep 24h format; clamp negative just in case
+    const hh = String(((h % 24) + 24) % 24).padStart(2, '0');
+    const mm = String(((m % 60) + 60) % 60).padStart(2, '0');
+    return `${hh}:${mm}`;
+}
+
+// ENTREGA STATE MACHINE (Passive → Active)
+// Passive (Semana 1 + Lunes Semana 2): NO puedes trabajar directo en la entrega,
+// pero la barra sube por engagement (apuntes/participación/estudio).
+const ENTREGA_PASSIVE_CAP = 40;         // % máximo antes del desbloqueo
+const ENTREGA_UNLOCK_WEEK = 2;
+const ENTREGA_UNLOCK_DOW = 1;           // Martes de Semana 2 (0=Lun)
+
+function isEntregaActive() {
+    return (state.week > ENTREGA_UNLOCK_WEEK) ||
+           (state.week === ENTREGA_UNLOCK_WEEK && state.dayOfWeek >= ENTREGA_UNLOCK_DOW);
+}
+
+function addEntrega(amount, kind = 'engagement', silent = false) {
+    amount = Number(amount) || 0;
+    if (amount === 0) return;
+
+    const active = isEntregaActive();
+
+    // Direct work is locked until Tuesday of week 2.
+    if (!active && kind === 'direct' && amount > 0) {
+        if (!silent) {
+            flash('bad');
+            log('🔒 Aún no puedes avanzar la entrega directamente. Primero: base (apuntes/participación/estudio).', 'warn');
+        }
+        return;
+    }
+
+    // Passive: positive gains are capped (but penalties still apply).
+    if (!active && amount > 0) {
+        const capped = Math.min(ENTREGA_PASSIVE_CAP, state.entrega + amount);
+        const delta = capped - state.entrega;
+        state.entrega = clamp(capped);
+        if (!silent && delta !== 0) {
+            flash('good');
+            spawnFloat('+' + delta.toFixed(0) + ' 📋', 'good');
+        }
+        return;
+    }
+
+    // Active or negative changes (always apply)
+    state.entrega = clamp(state.entrega + amount);
+    if (!silent && amount !== 0) {
+        if (amount > 0) { flash('good'); spawnFloat('+' + amount.toFixed(0) + ' 📋', 'good'); }
+        else { flash('bad'); spawnFloat(amount.toFixed(0) + ' 📋', 'bad'); }
+    }
+}
+
+// Throttle random speech so it doesn't change 60x/second
+function setSpeech(mood, poolOrText, cssClass = '') {
+    const now = Date.now();
+    const moodChanged = mood !== state._mood;
+    const timeUp = now >= (state._speechNextAt || 0);
+
+    if (moodChanged || timeUp) {
+        const text = Array.isArray(poolOrText) ? pick(poolOrText) : poolOrText;
+        state._speech = text;
+        state._speechClass = cssClass;
+        state._mood = mood;
+
+        // 1.6s–3.2s feels 'alive' without flicker
+        const min = 1600, max = 3200;
+        state._speechNextAt = now + min + Math.random() * (max - min);
+    }
+
+    return { text: state._speech, cssClass: state._speechClass };
+}
+
+
+function modStat(stat, amount, silent = false) {
+    state[stat] = clamp(state[stat] + amount);
+    if (!silent && amount !== 0) {
+        if (amount > 0) { flash('good'); spawnFloat('+' + amount, 'good'); }
+        else { flash('bad'); spawnFloat(amount, 'bad'); }
+    }
+}
+
+function setCooldown(action, secs) {
+    state.cooldowns[action] = Date.now() + (secs * 1000);
+}
+
+function getCooldown(action) {
+    if (!state.cooldowns[action]) return 0;
+    return Math.max(0, Math.ceil((state.cooldowns[action] - Date.now()) / 1000));
+}
+
+function updateBadge(type, level) {
+    const el = $('badge-' + type);
+    if (!el) return;
+    el.classList.remove('active', 'level2');
+    if (level >= 1) el.classList.add('active');
+    if (level >= 2) el.classList.add('level2');
+}
+
+function modMeta(stat, amount) {
+    state[stat] = clamp(state[stat] + amount);
+}
+
+function updateMetaBadges() {
+    // Map 0..100 -> (0,1,2) for the GameBoy-style badges
+    const d = state.distraction;
+    const s = state.teacherSuspicion;
+
+    const dLvl = d >= 70 ? 2 : d >= 35 ? 1 : 0;
+    const sLvl = s >= 70 ? 2 : s >= 35 ? 1 : 0;
+
+    updateBadge('distra', dLvl);
+    updateBadge('sospecha', sLvl);
+}
+
+// SCREENS
+function showScreen(name) {
+    document.querySelectorAll('.game-screen').forEach(s => s.classList.remove('active'));
+    $(name + '-screen').classList.add('active');
+    state.screen = name;
+    if (name === 'main') updateControls();
+}
+
+
+function rand(min, max) { return min + Math.random() * (max - min); }
+
+function bumpNextPrompt(min = 0.03, max = 0.07) {
+    // nextPromptAt uses state.time units (0..1 = 480min)
+    state.nextPromptAt = Math.min(0.98, state.time + rand(min, max));
+}
+
+function clearActionDecision() {
+    state.awaitingActionDecision = null;
+    if (DOM.modalHint) DOM.modalHint.textContent = '';
+}
+
+function openActionPrompt(icon, title, desc, allowedActions, onResolve) {
+    state.paused = true;
+    state.promptCount++;
+
+    DOM.modalIcon.textContent = icon;
+    DOM.modalTitle.textContent = title;
+    DOM.modalDesc.textContent = desc;
+    DOM.modalBtns.innerHTML = ''; // choices answered via bottom buttons
+    if (DOM.modalHint) DOM.modalHint.textContent = 'Elige una acción con los botones de abajo.';
+
+    state.awaitingActionDecision = {
+        allowed: (() => {
+            const a = Array.isArray(allowedActions) ? allowedActions.slice() : [];
+            // Gold Master guardrail: never present a prompt where only temptations are actionable.
+            const hasSafe = a.includes('exercise') || a.includes('study') || a.includes('notes') || a.includes('phoneAway') || a.includes('eat') || a.includes('delivery') || a.includes('homework') || a.includes('rest');
+            if (!hasSafe) a.unshift('notes');
+            return a;
+        })(),
+        onResolve: typeof onResolve === 'function' ? onResolve : null
+    };
+
+    DOM.modal.classList.add('active');
+    updateControls();
+    render();
+}
+
+function resolveActionDecision(type) {
+    const ctx = state.awaitingActionDecision;
+    if (!ctx) return;
+
+    // Close modal + unlock time
+    DOM.modal.classList.remove('active');
+    clearActionDecision();
+    state.paused = false;
+
+    // Optional extra resolution logic
+    if (ctx.onResolve) ctx.onResolve(type);
+
+    // After a decision, don't immediately spam another
+    bumpNextPrompt(state.atLunch ? 0.05 : 0.03, state.atLunch ? 0.10 : 0.07);
+    updateControls();
+    render();
+}
+
+
+
+// ─────────────────────────────────────────────────────────────
+// TEMPTATION / GEN-Z PROMPTS
+// These are not "evil" choices: they trade short-term dopamine for long-term pain.
+// ─────────────────────────────────────────────────────────────
+
+function scheduleForced(type, dtUnits) {
+    // dtUnits are in state.time units (0..1 = 480 min)
+    const add = (typeof dtUnits === 'number') ? dtUnits : 0.06;
+    let t = state.time + add;
+
+    // No academic forced events DURING lunch: defer them to after lunch ends.
+    if (state.atLunch) {
+        t = Math.max(state.lunchEnd + 0.02, t);
+    }
+
+    state.forcedEventAt = Math.min(0.98, t);
+    state.forcedEventType = type;
+}
+
+function runForcedEvent(type) {
+    if (!type) return;
+
+    if (type === 'popQuiz') {
+        showDecision('🧪', 'Pregunta sorpresa', 'El profe hace una pregunta justo cuando tu cerebro estaba en modo TikTok.', [
+            {
+                text: '🙋 Intentar responder',
+                effect: 'Riesgo/Recompensa',
+                action: () => {
+                    const noteBonus = (Date.now() - state.lastNotesAt < 45000) ? 0.08 : 0;
+                    const p = clamp01(0.35 + (state.knowledge/100)*0.38 + noteBonus - (state.distraction/100)*0.28 - (state.teacherSuspicion/100)*0.10);
+                    state.participation++;
+                    if (Math.random() < p) {
+                        modStat('knowledge', 6, true);
+                        modMeta('teacherSuspicion', -6);
+                        log('✓ Sobreviviste la pregunta.', 'good');
+                    } else {
+                        modStat('sanity', -12, true);
+                        modMeta('teacherSuspicion', 8);
+                        log('✗ Te fuiste en blanco.', 'bad');
+                    }
+                    updateMetaBadges();
+                }
+            },
+            {
+                text: '👀 Hacerte el invisible',
+                effect: '-Participación, +Sospecha',
+                action: () => {
+                    state.participation = Math.max(0, state.participation - 1);
+                    modMeta('teacherSuspicion', 10);
+                    log('Evitaste la pregunta. Él lo notó.', 'warn');
+                    updateMetaBadges();
+                }
+            }
+        ]);
+        return;
+    }
+
+
+    if (type === 'profQuestion') {
+        const prof = state.careerData.prof;
+        showDecision('👨‍🏫', 'Pregunta del profe', prof + ' pregunta algo en voz alta.',
+            [
+                { text: '🙋 Responder', effect: 'Riesgo/Recompensa', action: () => {
+                    const noteBonus = (Date.now() - state.lastNotesAt < 45000) ? 0.08 : 0;
+                    const p = clamp01(0.40 + (state.knowledge/100)*0.40 + noteBonus - (state.distraction/100)*0.30 - (state.teacherSuspicion/100)*0.12);
+                    state.participation++;
+                    if (Math.random() < p) {
+                        modStat('knowledge', 8);
+                        modStat('sanity', 10, true);
+                        modMeta('teacherSuspicion', -8);
+                        modMeta('distraction', -8);
+                        log('✓ ¡Correcto!', 'good');
+                    } else {
+                        modStat('sanity', -14);
+                        modMeta('teacherSuspicion', 10);
+                        log('✗ Incorrecto...', 'bad');
+                    }
+                    updateMetaBadges();
+                }},
+                { text: '👀 No responder', effect: 'Seguro… pero te miran', action: () => {
+                    modMeta('teacherSuspicion', 5);
+                    log('Evitaste responder.', 'story');
+                    updateMetaBadges();
+                }}
+            ]
+        );
+        return;
+    }
+    if (type === 'caughtPhone') {
+        const prof = state.careerData.prof;
+        showDecision('📵', 'Te vieron en el cel', `${prof} te mira. “¿Estás en el celular?”`, [
+            {
+                text: '😅 Pedir perdón',
+                effect: '-Cordura, baja sospecha',
+                action: () => {
+                    modStat('sanity', -6, true);
+                    modMeta('teacherSuspicion', -6);
+                    modMeta('distraction', -10);
+                    log('Te salvó la humildad… un poquito.', 'good');
+                    updateMetaBadges();
+                }
+            },
+            {
+                text: '🧊 “Era el reloj” (bluff)',
+                effect: '+Sospecha',
+                action: () => {
+                    modMeta('teacherSuspicion', 14);
+                    log('Nadie cree eso. Nadie.', 'bad');
+                    updateMetaBadges();
+                }
+            },
+            {
+                text: '😶 Guardarlo sin decir nada',
+                effect: '-Participación, +Sospecha',
+                action: () => {
+                    state.participation = Math.max(0, state.participation - 1);
+                    modMeta('teacherSuspicion', 10);
+                    modMeta('distraction', -6);
+                    log('Silencio. Incómodo.', 'warn');
+                    updateMetaBadges();
+                }
+            }
+        ]);
+        return;
+    }
+
+    if (type === 'followUp') {
+        const prof = state.careerData.prof;
+        showDecision('🗂️', 'Follow-up', `${prof}: “Ok, muéstrame entonces”.`, [
+            {
+                text: '📂 Mostrar algo real',
+                effect: '-Cordura, baja sospecha',
+                action: () => {
+                    modStat('sanity', -6, true);
+                    modMeta('teacherSuspicion', -10);
+                    modMeta('distraction', -6);
+                    if (state.entrega < 25 && state.week === 2) {
+                        modStat('sanity', -8, true);
+                        log('…y estaba flojo. Duele.', 'bad');
+                    } else {
+                        log('Mostraste algo decente. Respira.', 'good');
+                    }
+                    updateMetaBadges();
+                }
+            },
+            {
+                text: '😵 “Se me quedó en la casa”',
+                effect: '+Sospecha fuerte',
+                action: () => {
+                    modMeta('teacherSuspicion', 18);
+                    modStat('sanity', -10, true);
+                    log('Eso sonó a excusa. Porque lo fue.', 'bad');
+                    updateMetaBadges();
+                }
+            }
+        ]);
+        return;
+    }
+}
+
+function phoneTemptationPrompt() {
+    showDecision('📱', 'Notificaciones', 'Abres el cel “solo para ver la hora”… y aparece un universo.', [
+        {
+            text: '📵 Guardarlo y apuntar',
+            effect: '-Distracción',
+            action: () => {
+                state.lastNotesAt = Date.now();
+                modMeta('distraction', -12);
+                modMeta('teacherSuspicion', -2);
+                modStat('knowledge', 1, true);
+                log('Volviste al mundo real.', 'good');
+                updateMetaBadges();
+            }
+        },
+        {
+            text: '📱 Scroll 30s',
+            effect: '+Cordura ahora, +Consecuencias después',
+            action: () => {
+                modStat('sanity', 8, true);
+                modMeta('distraction', 26);
+                // Delayed consequence: pop quiz soon
+                scheduleForced('popQuiz', 0.06);
+                // If you're already suspicious, you might get caught
+                if (state.teacherSuspicion >= 45 && Math.random() < 0.35) scheduleForced('caughtPhone', 0.04);
+                log('Dopamina. Gratis. (No es gratis.)', 'warn');
+                updateMetaBadges();
+            }
+        },
+        {
+            text: '💬 Responder el group chat',
+            effect: '+Cordura, +Distracción, +Sospecha',
+            action: () => {
+                modStat('sanity', 10, true);
+                modMeta('distraction', 34);
+                modMeta('teacherSuspicion', 6);
+                // Time slip
+                state.time = Math.min(0.98, state.time + 0.02);
+                scheduleForced('popQuiz', 0.05);
+                log('“Solo respondo rápido” (mentira).', 'warn');
+                updateMetaBadges();
+            }
+        }
+    ]);
+}
+
+function lunchTemptationPrompt() {
+    const weatherLine = state.weather === 'lluvia' ? 'Está lloviendo duro.' : (state.weather === 'soleado' ? 'Hace sol brutal.' : 'Está nublado raro.');
+    showDecision('🧃', 'Zona de descanso', `${weatherLine} La Plaza y la vida social te llaman.`, [
+        {
+            text: '🥗 Comer rápido y volver',
+            effect: 'Seguro',
+            action: () => {
+                modStat('hunger', 18, true);
+                modMeta('distraction', -8);
+                log('Volviste antes que los demás.', 'good');
+                updateMetaBadges();
+            }
+        },
+        {
+            text: '🗣️ Quedarte chismeando',
+            effect: '+Cordura, -Tiempo',
+            action: () => {
+                modStat('sanity', 14, true);
+                modMeta('distraction', 14);
+                // Less lunch time, higher chance of arriving late to PM
+                state.time = Math.min(0.98, state.time + 0.03);
+                if (state.schedule === 'early' && Math.random() < 0.55) {
+                    state.lates++; modStat('sanity', -6, true);
+                    log(`⏰ Llegaste tarde (${state.lates}/3).`, 'bad');
+                } else {
+                    log('La vida social ganó hoy.', 'warn');
+                }
+                updateMetaBadges();
+            }
+        },
+        {
+            text: '🚪 Salir a “tomar aire”',
+            effect: '+Cordura, +Riesgo',
+            action: () => {
+                modStat('sanity', 16, true);
+                modMeta('distraction', 10);
+                // Weather tax
+                if (state.weather === 'lluvia') { modStat('sanity', -6, true); modStat('water', -6, true); }
+                state.time = Math.min(0.98, state.time + 0.04);
+                if (Math.random() < 0.35) {
+                    state.lates++; modStat('sanity', -6, true);
+                    log(`⏰ Te fuiste de largo (${state.lates}/3).`, 'bad');
+                } else {
+                    log('Volviste a tiempo… de milagro.', 'warn');
+                }
+                updateMetaBadges();
+            }
+        }
+    ]);
+}
+
+function exercisePrompt() {
+    if (state.exerciseToday) return false;
+    state.exerciseToday = true;
+    showDecision('🧩', 'Ejercicio en clase', 'Hay ejercicio práctico. Nadie quiere, todos lo necesitan.', [
+        {
+            text: '✅ Hacerlo en serio',
+            effect: '+Fundación, +Conocimiento',
+            action: () => {
+                modStat('knowledge', 4, true);
+                modStat('energy', -6, true);
+                modStat('sanity', -3, true);
+                modMeta('foundation', 10);
+                modMeta('teacherSuspicion', -3);
+                state.participation++;
+                log('Te dolió, pero te construyó.', 'good');
+                updateMetaBadges();
+            }
+        },
+        {
+            text: '😶‍🌫️ No hacerlo',
+            effect: '+Cordura ahora, -Fundación después',
+            action: () => {
+                modStat('sanity', 8, true);
+                modMeta('teacherSuspicion', 10);
+                modMeta('distraction', 8);
+                log('Hoy ganaste paz… mañana pagas.', 'warn');
+                updateMetaBadges();
+            }
+        },
+        {
+            text: '🤝 Copiar de alguien',
+            effect: 'Puede salir mal',
+            action: () => {
+                modStat('knowledge', 2, true);
+                modStat('sanity', 6, true);
+                modMeta('distraction', 6);
+                if (Math.random() < 0.35) {
+                    modMeta('teacherSuspicion', 18);
+                    modStat('sanity', -12, true);
+                    log('Te vieron. Ay.', 'bad');
+                } else {
+                    log('Nadie miró… esta vez.', 'warn');
+                }
+                updateMetaBadges();
+            }
+        }
+    ]);
+    return true;
+}
+
+function procrastinationPrompt() {
+    const active = isEntregaActive();
+
+    const opts = [];
+
+    if (active) {
+        opts.push({
+            text: '🧱 Avanzar entrega',
+            effect: '+Entrega, -Cordura',
+            action: () => {
+                const bonus = (state.week === 2) ? (state.foundation * 0.05) : 0;
+                addEntrega(4 + bonus, 'direct', true);
+                modStat('sanity', -8, true);
+                modStat('energy', -5, true);
+                modMeta('distraction', -8);
+                log('Avanzaste algo real.', 'good');
+                updateMetaBadges();
+            }
+        });
+    } else {
+        // Passive phase: you can prepare, but not build the deliverable yet.
+        opts.push({
+            text: '📓 Resumir apuntes (base)',
+            effect: '+Conocimiento, +Entrega (pasiva)',
+            action: () => {
+                modStat('knowledge', 3, true);
+                addEntrega(1.5, 'engagement', true);
+                modStat('energy', -4, true);
+                modMeta('distraction', -6);
+                log('Resumiste apuntes. No es “avance final”, pero construye base.', 'good');
+                updateMetaBadges();
+            }
+        });
+    }
+
+    opts.push({
+        text: '📌 Buscar inspiración en el celular',
+        effect: '+Cordura ahora, +Distracción',
+        action: () => {
+            modStat('sanity', 8, true);
+            addEntrega(1, 'engagement', true);
+            modMeta('distraction', 14);
+            log('Inspiración… o trampa bonita.', 'warn');
+            updateMetaBadges();
+        }
+    });
+
+    opts.push({
+        text: '🧼 Organizar archivos',
+        effect: 'Se siente productivo',
+        action: () => {
+            modStat('sanity', 6, true);
+            state.time = Math.min(0.98, state.time + 0.02);
+            modMeta('distraction', 10);
+            log('Ordenaste. No avanzaste mucho.', 'warn');
+            updateMetaBadges();
+        }
+    });
+
+    showDecision('🗂️', 'Procrastinación productiva',
+        active ? 'La entrega te mira. Hoy sí puedes meterle mano.' : 'La entrega te mira… pero todavía estás en fase base.',
+        opts
+    );
+}
+
+function progressCheckPrompt() {
+    if (state.progressCheckToday) return false;
+    state.progressCheckToday = true;
+    const prof = state.careerData.prof;
+    showDecision('👀', 'Revisión rápida', `${prof}: “Muéstrenme avance”.`, [
+        {
+            text: '📂 Mostrar progreso real',
+            effect: 'Baja sospecha',
+            action: () => {
+                state.participation++;
+                addEntrega(1.2, 'engagement', true);
+                modStat('sanity', -4, true);
+                modMeta('teacherSuspicion', -10);
+                modMeta('distraction', -6);
+                if (isEntregaActive() && state.entrega < 15) {
+                    modStat('sanity', -10, true);
+                    log('Tu avance estaba bajito. Quedó anotado.', 'bad');
+                    modMeta('teacherSuspicion', 8);
+                } else {
+                    log('Ok. Se ve progreso.', 'good');
+                }
+                updateMetaBadges();
+            }
+        },
+        {
+            text: '😎 Bluff confianza',
+            effect: '+Cordura ahora, +Riesgo después',
+            action: () => {
+                modStat('sanity', 10, true);
+                modMeta('teacherSuspicion', 18);
+                scheduleForced('followUp', 0.08);
+                log('Hablaste como si estuviera hecho.', 'warn');
+                updateMetaBadges();
+            }
+        },
+        {
+            text: '🙈 Evitar / esconderte',
+            effect: '-Participación, +Sospecha',
+            action: () => {
+                state.participation = Math.max(0, state.participation - 1);
+                modStat('sanity', 6, true);
+                modMeta('teacherSuspicion', 12);
+                log('Te hiciste invisible. Él te vio.', 'warn');
+                updateMetaBadges();
+            }
+        }
+    ]);
+    return true;
+}
+
+function materialsPrompt() {
+    if (state.week !== 2) return false;
+    showDecision('🛒', 'Materiales', 'No aparece el material que necesitas para la entrega. Panamá moment.', [
+        {
+            text: '🔁 Adaptar con lo que hay',
+            effect: '+Entrega moderada',
+            action: () => {
+                const bonus = state.foundation * 0.06;
+                addEntrega(4 + bonus, 'direct', true);
+                modMeta('foundation', 2);
+                modStat('sanity', -4, true);
+                log('Improvisaste con dignidad.', 'good');
+                updateMetaBadges();
+            }
+        },
+        {
+            text: '🔎 Buscar el “perfecto”',
+            effect: 'Puede salir bien o mal',
+            action: () => {
+                state.time = Math.min(0.98, state.time + 0.05);
+                modStat('sanity', -6, true);
+                if (Math.random() < 0.45) {
+                    addEntrega(7, 'direct', true);
+                    log('Lo encontraste. Milagro.', 'good');
+                } else {
+                    modStat('sanity', -8, true);
+                    modMeta('distraction', 10);
+                    log('Perdiste tiempo. Y la paz.', 'bad');
+                }
+                updateMetaBadges();
+            }
+        },
+        {
+            text: '😵‍💫 Dejarlo para después',
+            effect: '+Cordura ahora, -Entrega',
+            action: () => {
+                modStat('sanity', 10, true);
+                addEntrega(-2, 'direct', true);
+                modMeta('teacherSuspicion', 6);
+                log('El problema sigue ahí. Pero tú no lo miras.', 'warn');
+                updateMetaBadges();
+            }
+        }
+    ]);
+    return true;
+}
+
+function routinePrompt() {
+    // Routine prompts should always feel like tradeoffs: safe vs risky vs temptation.
+    // Coffee/Water should ONLY appear when the situation justifies it.
+
+    // LUNCH
+    if (state.atLunch) {
+        // At EXACT lunch start: ALWAYS give the player agency (eat/order first).
+        if (!state.lunchJustStarted && Math.random() < 0.22) {
+            lunchTemptationPrompt();
+            return;
+        }
+
+        const hot = ((state.water < 45) && Math.random() < 0.65) || (Math.random() < 0.15);
+        const sleepy = ((state.energy < 55) && Math.random() < 0.55);
+
+        const pool = [];
+        if (hot && sleepy) pool.push('La Plaza está full, hace calor y vienes medio zombie… ¿qué haces?');
+        else if (hot) pool.push('Hace calor y el A/C no está ayudando… ¿cómo sobrevives el almuerzo?');
+        else if (sleepy) pool.push('Almuerzo + sueño: combo mortal. ¿Qué haces?');
+        else pool.push('La Plaza está full. Zona de descanso te llama. ¿Cuál es tu jugada?');
+
+        // Lunch actions (balanced: safe food path + risky fun paths)
+        const allow = ['eat','delivery','rest','gossip','vibe','phoneAway','refSearch','scroll'];
+        if (hot) allow.push('water');
+        if (sleepy) allow.push('coffee');
+
+        openActionPrompt('🍽️', 'ALMUERZO', pool[Math.floor(Math.random()*pool.length)], allow,
+            (a) => {
+                if (a === 'delivery') DOM.location.textContent = '📍 DELIVERY / PASILLO';
+                if (a === 'eat') DOM.location.textContent = '📍 LA PLAZA';
+                if (a === 'gossip') DOM.location.textContent = '📍 ZONA DE DESCANSO';
+                if (a === 'vibe') DOM.location.textContent = '📍 AFUERA / PASILLO';
+            }
+        );
+
+        state.lunchJustStarted = false;
+        if (DOM.modalHint) {
+            const back = timeToClock(state.lunchEnd);
+            let extra = `Regreso: ${back}.`;
+            if (state.deliveryPending && state.deliveryArrivesAt != null) extra += ` Delivery llega: ${timeToClock(state.deliveryArrivesAt)}.`;
+            if (state.deliveryReady) extra += ' Delivery listo: come ya o se enfría.';
+            DOM.modalHint.textContent = extra;
+        }
+        return;
+    }
+
+    // CLASS
+    const phase = state.time < state.lunchStart ? 'CLASE AM' : 'CLASE PM';
+
+    // Decide a consistent "mode" for the moment: AM leans lecture, PM leans workshop
+    if (state.time < state.lunchStart) state.classMode = 'lecture';
+    else state.classMode = (Math.random() < 0.65 ? 'workshop' : 'lecture');
+
+    // Narrative popups (rare) - keep them low so they don't steal agency.
+    const r = Math.random();
+    if (r < 0.08) { phoneTemptationPrompt(); return; }
+
+    // In-class exercise (usually once per day)
+    if (!state.exerciseToday && state.classMode === 'workshop' && Math.random() < 0.22) {
+        exercisePrompt();
+        return;
+    }
+
+    // Teacher progress check (usually once per day)
+    if (!state.progressCheckToday && Math.random() < 0.14) {
+        progressCheckPrompt();
+        return;
+    }
+
+    // Week 2 materials chaos (only once ENTREGA is active)
+    if (isEntregaActive() && Math.random() < 0.16) {
+        materialsPrompt();
+        return;
+    }
+
+    // Productive procrastination (any time)
+    if (Math.random() < 0.14) {
+        procrastinationPrompt();
+        return;
+    }
+
+    // Contextual triggers for Coffee/Water
+    const thirstyOrHot = ((state.water < 45) && Math.random() < 0.55) || (Math.random() < (state.week === 2 ? 0.18 : 0.10));
+    const boredOrSleepy = ((state.energy < 55) && Math.random() < 0.60) || ((state.week === 2 && state.energy < 65) && Math.random() < 0.35);
+
+    // The "good" option depends on class mode
+    const goodAction = (state.classMode === 'workshop') ? 'exercise' : 'notes';
+
+    // Event prompts that justify Coffee/Water (so they don't feel random)
+    if (boredOrSleepy && Math.random() < 0.35) {
+        const allow = [goodAction, 'phoneAway', 'refSearch', 'coffee', 'scroll'];
+        const altProductive = (state.classMode === 'workshop') ? 'notes' : 'study';
+        if (altProductive !== goodAction && Math.random() < 0.45) allow.splice(1, 0, altProductive);
+        if (thirstyOrHot && Math.random() < 0.35) allow.push('water');
+        if (Math.random() < (state.week === 2 ? 0.55 : 0.22)) allow.push('homework');
+        openActionPrompt('☕', phase,
+            'La clase te está arrullando… ¿te despiertas con café o te salvas de otra forma?',
+            allow
+        );
+        return;
+    }
+
+    if (thirstyOrHot && Math.random() < 0.35) {
+        const allow = [goodAction, 'phoneAway', 'refSearch', 'water', 'scroll'];
+        const altProductive = (state.classMode === 'workshop') ? 'notes' : 'study';
+        if (altProductive !== goodAction && Math.random() < 0.45) allow.splice(1, 0, altProductive);
+        if (boredOrSleepy && Math.random() < 0.30) allow.push('coffee');
+        if (Math.random() < (state.week === 2 ? 0.55 : 0.22)) allow.push('homework');
+        openActionPrompt('💧', phase,
+            'El A/C está fallando y te estás secando… ¿agua, foco, o el camino oscuro del cel?',
+            allow
+        );
+        return;
+    }
+
+    // Default balanced class prompt
+    const allow = (state.classMode === 'workshop')
+        ? [goodAction, 'notes', 'phoneAway', 'refSearch', 'scroll']
+        : [goodAction, 'study', 'phoneAway', 'refSearch', 'scroll'];
+    if (state.energy < 45 && Math.random() < 0.55) allow.push('rest');
+    if (Math.random() < 0.18) allow.push('vibe');
+    if (Math.random() < (state.week === 2 ? 0.55 : 0.22)) allow.push('homework');
+
+    const pool = [];
+    if (state.classMode === 'workshop') {
+        pool.push('Taller activo: ejercicio en mesa. ¿Resuelves, tomas apuntes o te distraes?');
+        pool.push('El profe pasa revisando mesas. ¿Te pones serio o improvisas?');
+    } else {
+        pool.push('Tema normal… pero el cel vibra. ¿Estudias, haces apuntes, o caes?');
+        pool.push('Clase teórica pesada. Tu cel vibra. ¿Haces apuntes o te vas en la tuya?');
+    }
+
+    openActionPrompt(state.classMode === 'workshop' ? '🧱' : '✏️', phase, pool[Math.floor(Math.random()*pool.length)], allow);
+}
+
+
+function maybeTriggerRoutinePrompt() {
+    if (state.screen !== 'main' || state.gameOver) return;
+    if (state.dayEndQueued) return;
+
+    // Forced follow-ups (delayed consequences from temptations)
+    if (!state.paused && state.forcedEventAt != null && state.time >= state.forcedEventAt) {
+        const t = state.forcedEventType;
+
+        // IMPORTANT: During lunch, nothing academic happens. Defer forced professor events
+        // (popQuiz / caughtPhone / followUp) until AFTER lunch ends.
+        if (state.atLunch && (t === 'popQuiz' || t === 'caughtPhone' || t === 'followUp' || t === 'profQuestion')) {
+            state.forcedEventAt = Math.max(state.lunchEnd + 0.02, state.time + 0.02);
+            return;
+        }
+
+        state.forcedEventAt = null;
+        state.forcedEventType = null;
+        runForcedEvent(t);
+        return;
+    }
+
+    // Auto-wake from lunch nap when the timer hits
+    if (state.isResting && state.inNap && state.restUntilAt != null && state.time >= state.restUntilAt) {
+        const wokeAt = state.restUntilAt;
+        state.isResting = false;
+        state.inNap = false;
+        state.restUntilAt = null;
+
+        const back = state.lunchEnd;
+        const wokeLate = wokeAt > back;
+
+        if (wokeLate) {
+            state.lates++;
+            modMeta('teacherSuspicion', 10);
+            modStat('sanity', -12, true);
+            flash('bad');
+
+            showDecision('🚨', '¡PANIC!',
+                `Te despertaste a las ${timeToClock(wokeAt)}. La clase empezó a las ${timeToClock(back)}.`,
+                [
+                    { text: '🏃 Salir corriendo', effect: `Tarde (${state.lates}/3)`, action: () => log('🏃 Llegaste sudando. El profe te vio.', 'bad') }
+                ]
+            );
+        } else {
+            flash('good');
+            log(`⏰ Despertaste a tiempo (${timeToClock(wokeAt)}).`, 'good');
+            bumpNextPrompt(0.02, 0.04);
+        }
+
+        updateControls();
+        render();
+        return;
+    }
+
+    // If resting (non-nap), prompt to wake after a bit
+    if (state.isResting && !state.inNap) {
+        if (state.nextWakePromptAt == null) {
+            state.nextWakePromptAt = Math.min(0.98, state.time + 0.05);
+        }
+        if (!state.paused && state.time >= state.nextWakePromptAt) {
+            openActionPrompt('⏰', '¿DESPERTAR?', 'Te estás quedando dormido…', ['wake'], (a) => {
+                if (a === 'wake') doWake();
+                state.nextWakePromptAt = null;
+            });
+        }
+        return;
+    }
+
+    if (state.paused) return;
+
+    if (!state.nextPromptAt || state.nextPromptAt <= state.time) {
+        routinePrompt();
+    }
+}
+
+function showDecision(icon, title, desc, choices) {
+    state.paused = true;
+    clearActionDecision();
+
+    DOM.modalIcon.textContent = icon;
+    DOM.modalTitle.textContent = title;
+    DOM.modalDesc.textContent = desc;
+    if (DOM.modalHint) DOM.modalHint.textContent = '';
+
+    DOM.modalBtns.innerHTML = '';
+    choices.forEach(c => {
+        const btn = document.createElement('button');
+        btn.className = 'decision-btn';
+        btn.innerHTML = c.text + (c.effect ? `<span class="effect">${c.effect}</span>` : '');
+        btn.onclick = () => {
+            DOM.modal.classList.remove('active');
+            state.paused = false;
+            if (c.action) c.action();
+
+            // After any modal decision, schedule the next routine prompt
+            bumpNextPrompt(state.atLunch ? 0.05 : 0.03, state.atLunch ? 0.10 : 0.07);
+            updateControls();
+            render();
+        };
+        DOM.modalBtns.appendChild(btn);
+    });
+
+    DOM.modal.classList.add('active');
+    updateControls();
+    render();
+}
+
+
+
+function markAttendance() {
+    if (!state.classToday) {
+        state.classToday = true;
+        state.classes++;
+        spawnFloat('CLASE ✓', 'good');
+    }
+}
+
+function setSchedule(mode) {
+    state.schedule = mode;
+
+    // Time is normalized 0..1 = 9:00..17:00 (480 minutes)
+    const LUNCH_START = 0.375;   // 12:00
+    const RETURN_1PM  = 0.500;   // 13:00
+    const RETURN_2PM  = 0.625;   // 14:00
+
+    const END_4PM     = 0.875;   // 16:00
+    const END_5PM     = 1.000;   // 17:00
+
+    state.lunchStart = LUNCH_START;
+
+    if (mode === 'early') {
+        // 9-12 + 1-4
+        state.lunchEnd = RETURN_1PM;
+        state.dayEndAt = END_4PM;
+    } else {
+        // 9-12 + 2-5
+        state.lunchEnd = RETURN_2PM;
+        state.dayEndAt = END_5PM;
+    }
+}
+
+
+function pickClassroom() {
+    const map = {
+        arq: 'AULA ARQ-201',
+        di: 'TALLER DI-105',
+        int: 'AULA INT-301',
+        com: 'LAB COM-210'
+    };
+    return map[state.career] || 'AULA';
+}
+
+function startDay1Intro() {
+    rollTeacherDayFlags();
+    state.classroom = pickClassroom();
+    setSchedule('late');
+
+    DOM.period.textContent = '🗓️ LUNES';
+    DOM.location.textContent = '📍 HALL / LISTA';
+
+    showDecision('📋', 'Regreso de vacaciones',
+        'Llegas antes de las 9am. Buscas tu nombre en la lista para ver tu salón.',
+        [
+            {
+                text: '🔎 Revisar la lista',
+                effect: 'Encuentras tu salón',
+                action: () => {
+                    DOM.location.textContent = '📍 ' + state.classroom;
+                    negotiateSchedule();
+                }
+            }
+        ]
+    );
+}
+
+function negotiateSchedule() {
+    const prof = state.careerData.prof;
+
+    // Teacher temperament: influenced by your current reputation.
+    // High suspicion makes negotiation harder.
+    const suspicion = state.teacherSuspicion || 0;
+    const base = clamp(55 - (suspicion * 0.6)); // 0..100-ish
+
+    showDecision('🕒', 'Negociar horario',
+        `${prof} propone 9–12 y tarde 2–5. Tú quieres 1–4. ¿Cómo lo intentas?`,
+        [
+            {
+                text: '🤝 Respetuoso: “¿Profe, podemos 1–4?”',
+                effect: `Prob. ${Math.round(base)}%`,
+                action: () => {
+                    const p = base / 100;
+                    if (Math.random() < p) {
+                        setSchedule('early');
+                        log('✅ Aceptó: 1–4pm. “Pero quiero ver compromiso.”', 'good');
+                        modStat('sanity', 6);
+                        modMeta('teacherSuspicion', -2);
+                    } else {
+                        setSchedule('late');
+                        log('❌ Rechazó: “No. Mantengo 2–5 hoy.”', 'warn');
+                        modStat('sanity', -6);
+                        modMeta('teacherSuspicion', 2);
+                    }
+                    showDecision('🎓', '¡A sobrevivir!',
+                        'Objetivo: avanzar en la entrega final sin morir en el intento.',
+                        [{ text: '📚 EMPEZAR', action: startGame }]
+                    );
+                }
+            },
+            {
+                text: '😤 Agresivo: “Yo NECESITO 1–4.”',
+                effect: 'Alto riesgo',
+                action: () => {
+                    const p = Math.max(0.10, (base / 100) * 0.45);
+                    if (Math.random() < p) {
+                        setSchedule('early');
+                        log('✅ Aceptó… pero te miró raro: “Ok. Pero cero excusas.”', 'warn');
+                        modMeta('teacherSuspicion', 10);
+                        modStat('sanity', -4, true);
+                    } else {
+                        setSchedule('late');
+                        log('🧊 Refusal: “Con ese tono… menos.” Te quedas 2–5.', 'bad');
+                        modMeta('teacherSuspicion', 14);
+                        modStat('sanity', -10, true);
+                        flash('bad');
+                    }
+                    showDecision('🎓', '¡A sobrevivir!',
+                        'Objetivo: avanzar en la entrega final sin morir en el intento.',
+                        [{ text: '📚 EMPEZAR', action: startGame }]
+                    );
+                }
+            },
+            {
+                text: '🫡 Pasivo: “Como usted diga.”',
+                effect: 'Seguro, menos drama',
+                action: () => {
+                    setSchedule('late');
+                    log('🕑 Aceptaste 2–5pm. Cero conflicto, pero día más largo.', 'good');
+                    modMeta('teacherSuspicion', -2);
+                    showDecision('🎓', '¡A sobrevivir!',
+                        'Objetivo: avanzar en la entrega final sin morir en el intento.',
+                        [{ text: '📚 EMPEZAR', action: startGame }]
+                    );
+                }
+            },
+            {
+                text: '🧠 Contra-oferta: “Hoy 1–4 y vemos si funciona.”',
+                effect: 'Puede salir bien… o te dejan marcado',
+                action: () => {
+                    const p = Math.max(0.18, (base / 100) * 0.75);
+                    if (Math.random() < p) {
+                        setSchedule('early');
+                        state.counterOfferActive = true;
+                        log('🤝 Counter-offer: “Hoy sí… pero si fallas, mañana volvemos a 2–5.”', 'warn');
+                        modMeta('teacherSuspicion', 4);
+                    } else {
+                        setSchedule('late');
+                        log('❌ “No negocio con pruebas.” Te quedas 2–5.', 'warn');
+                        modMeta('teacherSuspicion', 3);
+                        modStat('sanity', -5, true);
+                    }
+                    showDecision('🎓', '¡A sobrevivir!',
+                        'Objetivo: avanzar en la entrega final sin morir en el intento.',
+                        [{ text: '📚 EMPEZAR', action: startGame }]
+                    );
+                }
+            }
+        ]
+    );
+}
+
+
+function dayStartEvents() {
+    rollTeacherDayFlags();
+    // Unlock message: Tuesday of week 2
+    if (state.week === 2 && state.dayOfWeek === 1) {
+        log('🔓 ENTREGA ACTIVA: desde hoy puedes trabajar directo en el entregable (antes era solo base).', 'good');
+    }
+    state.earlyReleaseChecked = false;
+    state.latesAtDayStart = state.lates;
+    state.suspicionAtDayStart = state.teacherSuspicion;
+    if (state.hangover) {
+        state.hangover = false;
+        modStat('energy', -18, true);
+        modStat('sanity', -8, true);
+        log('🤢 Hangover. Todo duele y el profe huele tu derrota.', 'warn');
+    }
+    // Daily weather (Panamá: it matters)
+    state.weather = pick(['soleado','nublado','lluvia']);
+
+    // Tranque / traffic (extra likely on Monday of week 2 if you partied)
+    let p = 0.22;
+    if (state.week === 2 && state.dayOfWeek === 0 && state.weekendParty > 0) p += 0.18;
+
+    if (Math.random() < p) {
+        showDecision('🚗', 'TRANQUE',
+            'Panamá activó el modo tráfico. ¿Cómo lo manejas?',
+            [
+                {
+                    text: '🕘 Salir temprano',
+                    effect: '-5 Energía (pero llegas)',
+                    action: () => {
+                        modStat('energy', -5, true);
+                        log('✅ Llegaste a tiempo.', 'good');
+                    }
+                },
+                {
+                    text: '🏃 Improvisar',
+                    effect: '50% tarde',
+                    action: () => {
+                        if (Math.random() < 0.5) {
+                            state.lates++;
+                            state.time = Math.min(1, state.time + 0.06);
+                            modStat('sanity', -6, true);
+                            log(`⏰ Llegaste tarde (${state.lates}/3).`, 'bad');
+                            flash('bad');
+                        } else {
+                            log('😮‍💨 Llegaste raspando.', 'warn');
+                        }
+                    }
+                }
+            ]
+        );
+    }
+
+    // Thursday delivery: entrega final anxiety
+    if (state.dayOfWeek === 3) {
+        showDecision('📋', 'Se viene la ENTREGA',
+            'Jueves. Empieza el discurso: “la entrega final es progresiva…”.',
+            [
+                { text: '😬 Tomar nota mental', effect: '-5 Cordura, +Entrega pasiva', action: () => { modStat('sanity', -5, true); addEntrega(2, 'engagement', false); log('Te cayó la realidad encima.', 'warn'); } },
+                { text: '🧊 Fingir calma', effect: '+0 (pero se acumula)', action: () => log('Actuaste zen. Por fuera.', 'story') }
+            ]
+        );
+    }
+}
+// GAME START
+$('title-screen').onclick = e => {
+    if (e.target.classList.contains('time-btn')) return;
+    if (state.screen === 'title') showScreen('career');
+};
+
+function selectCareer(id) {
+    state.career = id;
+    state.careerData = CAREERS[id];
+    $('career-badge').textContent = CAREERS[id].badge;
+    flash('good');
+    log('🎓 ' + CAREERS[id].name, 'good');
+    showScreen('main');
+    startDay1Intro();
+}
+
+function startGame() {
+    updateMetaBadges();
+    lastTime = Date.now();
+    bumpNextPrompt(0.02, 0.04);
+    requestAnimationFrame(gameLoop);
+}
+
+// GAME LOOP
+let lastTime = 0;
+
+function gameLoop() {
+    if (state.gameOver || state.screen !== 'main') return;
+
+    const now = Date.now();
+    const dt = (now - lastTime) / 1000;
+    lastTime = now;
+
+    const timePerSec = 1 / dayLength;
+
+    // Time tick policy:
+    // - Turn-based feel (paused) but clock STILL creeps (slow) to prevent 5:00 softlocks.
+    const pauseSpeed = 0.12;
+
+    const tick = (!state.paused ? 1 : pauseSpeed) * (state.isResting ? 3 : 1);
+    state.time += timePerSec * dt * tick;
+
+    if (!state.paused) {
+        // Stat drain/gain while actively playing
+        if (!state.atLunch) {
+            const mult = (state.coffeeCount >= 2) ? 1.5 : 1;
+
+            if (!state.isResting) {
+                state.energy = clamp(state.energy - 0.12 * dt * mult);
+                state.sanity = clamp(state.sanity - 0.08 * dt);
+                state.hunger = clamp(state.hunger - 0.15 * dt);
+                state.water = clamp(state.water - 0.18 * dt);
+            } else {
+                state.sanity = clamp(state.sanity - 0.03 * dt);
+                state.hunger = clamp(state.hunger - 0.07 * dt);
+                state.water = clamp(state.water - 0.09 * dt);
+            }
+        }
+
+        if (state.isResting) {
+            state.energy = clamp(state.energy + 0.28 * dt);
+        }
+
+        // Temptation meters decay slowly with time
+        state.distraction = clamp(state.distraction - (0.8 * dt));
+        state.teacherSuspicion = clamp(state.teacherSuspicion - (0.18 * dt));
+
+        checkGameOver();
+    }
+
+    // Period changes + delivery + dismissal must happen EVEN during pauses.
+    updatePeriod();
+    checkDeliveryArrival();
+    handleDismissal();
+
+    // If the day ended, stop loop until continueDay.
+    if (state.screen !== 'main') return;
+
+    maybeTriggerRoutinePrompt();
+
+    render();
+    requestAnimationFrame(gameLoop);
+}
+
+function updatePeriod() {
+    const wasLunch = state.atLunch;
+
+    // Lunch window is schedule-dependent; lunchStart is always 12:00.
+    state.atLunch = state.time >= state.lunchStart && state.time < state.lunchEnd;
+    state.inClass = !state.atLunch && !state.isResting;
+
+    // Snap to EXACT 12:00 when lunch begins, so the trigger is clean.
+    if (state.atLunch && !wasLunch) {
+        state.time = state.lunchStart;
+        flash('good');
+        log('🍽️ ¡Almuerzo!', 'good');
+        state.lunchJustStarted = true;
+        DOM.period.textContent = '🍽️ ALMUERZO';
+        DOM.period.classList.add('lunch');
+        DOM.location.textContent = '📍 LA PLAZA';
+
+        state.nextPromptAt = state.time;
+        state.foodCount = 0;
+        updateBadge('lleno', 0);
+
+        // Lunch resets delivery state for clarity
+        state.deliveryPending = false;
+        state.deliveryArrivesAt = null;
+        state.deliveryReady = false;
+        state.deliveryCost = 0;
+    }
+
+    if (!state.atLunch && wasLunch) {
+        state.lunchJustStarted = false;
+        DOM.period.textContent = '📚 CLASE PM';
+        DOM.period.classList.remove('lunch');
+        DOM.location.textContent = '📍 ' + (state.classroom || 'AULA');
+        bumpNextPrompt(0.02, 0.04);
+
+        // If you left lunch with pending delivery, force-complete it (cold but edible)
+        if (state.deliveryPending && !state.deliveryReady) {
+            state.deliveryPending = false;
+            state.deliveryArrivesAt = null;
+            state.deliveryReady = true;
+            log('📦 El delivery llegó mientras volvías a clase. Frío pero comible (guardado).', 'warn');
+        }
+    }
+
+    // Morning/afternoon badge
+    if (state.time < state.lunchStart) DOM.period.textContent = '📚 CLASE AM';
+}
+
+function checkDeliveryArrival() {
+    if (!state.deliveryPending || state.deliveryArrivesAt == null) return;
+    if (state.time < state.deliveryArrivesAt) return;
+
+    state.deliveryPending = false;
+    state.deliveryReady = true;
+    flash('good');
+    log('📦 Llegó el delivery. (Si no comes ya, se enfría y se vuelve triste).', 'good');
+}
+
+
+function handleDismissal() {
+    if (state.dayEndQueued) return;
+
+    // Strict priority hierarchy
+    const EARLY_RELEASE_AT = 0.8125; // 3:30 PM
+    const END_4PM = 0.875;
+    const HARD_5PM = 1.0;
+
+    // Priority 1: Early release check at 3:30
+    if (!state.earlyReleaseChecked && state.time >= EARLY_RELEASE_AT) {
+        state.earlyReleaseChecked = true;
+        if (state.teacherAllowsEarlyReleaseToday) {
+            queueDayEnd('3:30', EARLY_RELEASE_AT, 'El profe dijo: “Si quieren, se pueden ir ya.”');
+            return;
+        }
+    }
+
+    // Priority 2: Negotiated contract check at 4:00
+    if (state.schedule === 'early' && state.time >= END_4PM) {
+        queueDayEnd('4:00', END_4PM, 'Cumpliste el horario 1–4.');
+        return;
+    }
+
+    // Priority 3: Hard stop at 5:00 (absolute)
+    if (state.time >= HARD_5PM) {
+        queueDayEnd('5:00 HARD STOP', HARD_5PM, 'Se acabó el día.');
+        return;
+    }
+}
+
+function rollTeacherDayFlags() {
+    // Early release depends on teacher mood + your reputation.
+    const mood = Math.random();
+    const suspicion = state.teacherSuspicion || 0;
+
+    // Default: 15% chance. Lower if suspicion is high.
+    const p = Math.max(0.02, 0.15 - (suspicion / 200));
+    state.teacherAllowsEarlyReleaseToday = mood < p;
+}
+
+
+function startEveningFlow(onDone) {
+    // Evening choices happen after dismissal (same day). Quick but meaningful.
+    const zero = state.energy <= 0;
+    const activeEntrega = isEntregaActive();
+
+    const desc = zero
+        ? 'Vienes con 0 energía. Hoy no hay “gym/party”.'
+        : 'Después de clases… ¿en qué inviertes la noche?';
+
+    const choices = [
+        {
+            text: '🏠 Ir a casa (descansar)',
+            effect: '+Energía, +Cordura (seguro)',
+            action: () => {
+                modStat('energy', 35);
+                modStat('sanity', 8);
+                modMeta('distraction', -4);
+                log('🏠 Casa + cama = reset parcial del alma.', 'good');
+                if (onDone) onDone();
+            }
+        },
+        {
+            text: activeEntrega ? '📚 Estudiar (teoría) + base' : '📚 Estudiar (base)',
+            effect: '+Conocimiento, -Energía',
+            action: () => {
+                modStat('knowledge', 6);
+                addEntrega(activeEntrega ? 1.5 : 2.0, 'engagement', true);
+                modStat('energy', -10, true);
+                modStat('sanity', -3, true);
+                log(activeEntrega ? '📚 Estudiaste teoría. Suma base para la entrega.' : '📚 Estudiaste. La barra de entrega sube por engagement (todavía no directo).', 'story');
+                if (onDone) onDone();
+            }
+        },
+    ];
+
+    // Active entrega unlocks direct work option (only if you have energy).
+    if (!zero && activeEntrega) {
+        choices.push({
+            text: '🧱 Trabajar en la entrega (directo)',
+            effect: 'Gran avance, alto costo',
+            action: () => {
+                addEntrega(10, 'direct', true);
+                modStat('energy', -18, true);
+                modStat('sanity', -6, true);
+                modMeta('distraction', -8);
+                log('🧱 Noche intensa: avanzaste la entrega en serio.', 'good');
+                if (onDone) onDone();
+            }
+        });
+    }
+
+    if (!zero) {
+        choices.push({
+            text: '🏋️ Gym / ejercicio',
+            effect: '+Cordura, -Energía (mañana duele)',
+            action: () => {
+                modStat('sanity', 10);
+                modStat('energy', -12, true);
+                state.exerciseToday = true;
+                log('🏋️ Fuiste al gym. Tu cuerpo te cobrará intereses.', 'warn');
+                if (onDone) onDone();
+            }
+        });
+        choices.push({
+            text: '🫂 Amigos / social',
+            effect: '+Cordura, +Distracción',
+            action: () => {
+                modStat('sanity', 12);
+                modStat('energy', -6, true);
+                modMeta('distraction', 10);
+                log('🫂 Social. Bonito… pero mañana cuesta enfocarse.', 'story');
+                if (onDone) onDone();
+            }
+        });
+        choices.push({
+            text: '🎉 Party / noche loca',
+            effect: 'Gran buff social, gran castigo mañana',
+            action: () => {
+                modStat('sanity', 18);
+                modStat('energy', -20, true);
+                modStat('water', -8, true);
+                state.hangover = true;
+                log('🎉 Te fuiste. Mañana: modo zombi.', 'warn');
+                if (onDone) onDone();
+            }
+        });
+    }
+
+    showDecision('🌙', 'NOCHE', desc, choices);
+}
+
+function queueDayEnd(label, exitAt, reason) {
+    if (state.dayEndQueued) return;
+
+    state.dayEndQueued = true;
+    state.dayEndExitAt = exitAt;
+    state.dayEndReason = reason || '';
+
+    // Close any open prompt and stop normal prompt scheduling.
+    DOM.modal.classList.remove('active');
+    clearActionDecision();
+    state.forcedEventAt = null;
+    state.forcedEventType = null;
+    state.nextPromptAt = 999;
+
+    // Freeze the in-game clock at the exit moment for clarity.
+    state.time = Math.min(state.time, exitAt);
+
+    const clock = timeToClock(exitAt);
+    const title = `🏁 SALIDA ${label}`;
+    const desc = `${reason ? reason + ' ' : ''}Hora: ${clock}.`;
+
+    // For hard stops, auto-advance quickly to avoid softlocks.
+    const isHard = (label || '').includes('5:00') || (label || '').toLowerCase().includes('hard');
+
+    state.paused = true;
+    showDecision('🏁', title, desc, [
+        {
+            text: isHard ? '⏭️ Continuar' : '✅ OK',
+            effect: '',
+            action: () => {
+                const isHardLocal = isHard;
+                const proceed = () => {
+                    state.paused = false;
+                    state.dayEndQueued = false;
+                    endDay();
+                };
+                if (isHardLocal) {
+                    proceed();
+                } else {
+                    // Evening loop happens after dismissal.
+                    startEveningFlow(proceed);
+                }
+            }
+        }
+    ]);
+
+    if (isHard) {
+        setTimeout(() => {
+            if (state.screen !== 'main' || state.gameOver) return;
+            // If player didn't click, force it.
+            if (state.paused) {
+                DOM.modal.classList.remove('active');
+                state.paused = false;
+                state.dayEndQueued = false;
+                endDay();
+            }
+        }, 700);
+    }
+}
+
+
+function endDay() {
+    if (!state.classToday) {
+        state.absences++;
+        flash('bad'); shake();
+        log(`❌ Faltaste (${state.absences}/2)`, 'bad');
+
+        // Rule: 2 faltas = reprobado automático
+        if (state.absences >= 2) {
+            state.forceFail = true;
+            state.forceReason = '📅 Reprobado automático: 2 faltas.';
+            showEntrega();
+            return;
+        }
+    }
+    // Counter-offer contract enforcement
+    if (state.counterOfferActive) {
+        const gotLate = state.lates > (state.latesAtDayStart || 0);
+        const suspicionSpike = (state.teacherSuspicion - (state.suspicionAtDayStart || 0)) > 8;
+        if (gotLate || suspicionSpike) {
+            setSchedule('late');
+            log('🧊 Se cayó el “plan piloto”. Mañana vuelves a 2–5.', 'bad');
+        } else {
+            log('✅ El “plan piloto” sobrevivió. El profe no te quitó 1–4.', 'good');
+        }
+        state.counterOfferActive = false;
+    }
+
+    
+    state.time = 0;
+    state.classToday = false;
+    state.homeworkToday = false;
+    state.coffeeCount = 0;
+    state.waterCount = 0;
+    state.foodCount = 0;
+    state.sleepCount = 0;
+    state.isResting = false;
+    state.exerciseToday = false;
+    state.progressCheckToday = false;
+    state.forcedEventAt = null;
+    state.forcedEventType = null;
+    // Fresh day = some natural recovery of temptation meters
+    state.distraction = clamp(state.distraction - 25);
+    state.teacherSuspicion = clamp(state.teacherSuspicion - 10);
+    state.nextWakePromptAt = null;
+    state.awaitingActionDecision = null;
+    state.nextPromptAt = 0;
+    DOM.modal.classList.remove('active');
+    updateBadge('cafeina', 0);
+    updateBadge('bano', 0);
+    updateBadge('lleno', 0);
+    updateBadge('sleep', 0);
+    
+    state.dayOfWeek++;
+    
+    if (state.dayOfWeek >= 5) {
+        if (state.week === 1) {
+            state.week = 2;
+            state.dayOfWeek = 0;
+            state.weekendActions = 3;
+            $('weekend-actions').textContent = 3;
+            showScreen('weekend');
+            return;
+        } else {
+            showEntrega();
+            return;
+        }
+    }
+    
+    state.day++;
+    flash('good');
+    log(`━━ DÍA ${state.day} — RESPIRA ━━`, 'good');
+    dayStartEvents();
+    bumpNextPrompt(0.02, 0.04);
+    updateControls();
+}
+
+function checkGameOver() {
+    let reason = null;
+    if (state.energy <= 0) reason = '😴 Te desmayaste.<br>Tu cuerpo dijo: "Hasta aquí."';
+    else if (state.sanity <= 0) reason = '🧠 Colapso mental.<br>La mente tiene límites.';
+    else if (state.hunger <= 0) reason = '🍔 Desmayo por hambre.<br>El estómago vacío no perdona.';
+    else if (state.water <= 0) reason = '💧 Deshidratación.<br>En Panamá, el agua no es opcional.';
+    else if (state.lates > 3) reason = '⏰ Expulsado: demasiadas tardanzas.<br>El profe no es flexible.';
+    else if (state.absences >= 2) reason = '📅 Reprobado automático: 2 faltas.<br>No hay segunda oportunidad.';
+    
+    if (reason) {
+        state.gameOver = true;
+        shake();
+        $('gameover-reason').innerHTML = reason + '<br><br>Día ' + state.day + '/10';
+        showScreen('gameover');
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ACTIONS
+// ═══════════════════════════════════════════════════════════════
+
+function action(type) {
+    // In decision-driven mode, actions are only allowed when a prompt is active.
+    const ctx = state.awaitingActionDecision;
+    if (!ctx) { shake(); return; }
+
+    if (!ctx.allowed.includes(type)) { shake(); return; }
+    // Cooldowns are disabled in decision-driven mode to avoid locking out all safe choices.
+
+    // IMPORTANT: close the action-prompt BEFORE executing the action.
+    const onResolve = ctx.onResolve;
+
+    DOM.modal.classList.remove('active');
+    clearActionDecision();
+    state.paused = false;
+
+    switch(type) {
+        case 'study': doStudy(); break;
+        case 'notes': doNotes(); break;
+        case 'exercise': doExercise(); break;
+        case 'phoneAway': doPhoneAway(); break;
+        case 'refSearch': doRefSearch(); break;
+        case 'water': doWater(); break;
+        case 'coffee': doCoffee(); break;
+        case 'eat': doEat(); break;
+        case 'delivery': doDelivery(); break;
+        case 'homework': doHomework(); break;
+        case 'rest': doRest(); break;
+        case 'wake': doWake(); break;
+
+        // Temptations / bad-but-fun choices
+        case 'scroll': doScroll(); break;
+        case 'gossip': doGossip(); break;
+        case 'vibe': doVibe(); break;
+    }
+
+    // Optional prompt-specific side effects (e.g., location label)
+    if (onResolve) onResolve(type);
+
+    // If the action didn't open a new modal, schedule the next prompt now.
+    if (!state.paused) {
+        bumpNextPrompt(state.atLunch ? 0.05 : 0.03, state.atLunch ? 0.10 : 0.07);
+    }
+
+    updateControls();
+    render();
+}
+
+function doStudy() {
+    modStat('knowledge', 3);
+    modStat('energy', -4, true);
+    modStat('sanity', -2, true);
+    addEntrega(state.week === 2 ? 1.2 : 0.8, 'engagement', false);
+    markAttendance();
+
+    // Focus mechanics
+    modMeta('distraction', -6);
+    modMeta('teacherSuspicion', -1);
+    if (state.week === 1) modMeta('foundation', 1.2);
+
+    log(pick(STORIES.class), 'story');
+    setCooldown('study', 2);
+}
+
+function doNotes() {
+    markAttendance();
+    state.lastNotesAt = Date.now();
+    modMeta('distraction', -10);
+    modMeta('teacherSuspicion', -2);
+    modStat('knowledge', 2);
+    modStat('energy', -2, true);
+    // Passive entrega progress from engagement
+    addEntrega(1.0, 'engagement', true);
+    log('✏️ Tomando apuntes...', 'story');
+    setCooldown('notes', 3);
+}
+
+
+function doExercise() {
+    // Workshop / in-class exercise
+    markAttendance();
+    state.exerciseToday = true;
+
+    modStat('knowledge', 2);
+    addEntrega(state.week === 2 ? 2.0 : 1.2, 'engagement', false);
+    modStat('energy', -6, true);
+    modStat('sanity', -3, true);
+
+    modMeta('distraction', -10);
+    modMeta('teacherSuspicion', -2);
+    if (state.week === 1) modMeta('foundation', 3.0);
+
+    log('🧱 Hiciste el ejercicio en clase. (Duele, pero suma.)', 'good');
+    updateMetaBadges();
+}
+
+function doPhoneAway() {
+    // A "good" choice with a real cost: focus up, but FOMO hits.
+    markAttendance();
+
+    state.phoneAwayUntilAt = Math.min(0.98, state.time + 0.12);
+
+    modMeta('distraction', -18);
+    modMeta('teacherSuspicion', -4);
+    modStat('sanity', -3, true);
+
+    log('📵 Guardaste el cel. Silencio incómodo… pero foco real.', 'good');
+    updateMetaBadges();
+}
+
+function doAccidentalScroll() {
+    // A lighter version of scroll (used when you "only" meant to search inspiración)
+    if (state.inClass && !state.atLunch) markAttendance();
+
+    modStat('sanity', 5, true);
+    modStat('knowledge', -1, true);
+
+    modMeta('distraction', 14);
+    modMeta('teacherSuspicion', 4);
+
+    state.time = Math.min(0.98, state.time + 0.012);
+
+    log('🔎→📱 Buscabas inspiración… terminaste scrolleando.', 'warn');
+    updateMetaBadges();
+
+    scheduleForced('popQuiz', 0.05 + Math.random() * 0.05);
+    if (state.teacherSuspicion >= 45 && Math.random() < 0.22) scheduleForced('caughtPhone', 0.04);
+}
+
+function doRefSearch() {
+    // Risky strategic option: can give a real boost, or turn into accidental scroll.
+    if (state.inClass && !state.atLunch) markAttendance();
+
+    // If you recently chose to put the phone away, you're less likely to spiral
+    const phoneAway = (state.phoneAwayUntilAt != null && state.time <= state.phoneAwayUntilAt);
+
+    // Small vibe: feels "productive"
+    modStat('sanity', 2, true);
+    modMeta('distraction', 6);
+
+    const base = 0.62;
+    const pGood = clamp01(base + (state.knowledge/100)*0.12 - (state.distraction/100)*0.22 - (phoneAway ? 0.10 : 0));
+
+    if (Math.random() < pGood) {
+        modStat('knowledge', 2, true);
+        addEntrega(state.week === 2 ? 2.2 : 1.0, 'engagement', true);
+        modMeta('teacherSuspicion', -2);
+        // Time cost (you searched, but it was worth it)
+        state.time = Math.min(0.98, state.time + 0.010);
+        log('🔎 Encontraste una inspiración clave. Te destrabó.', 'good');
+        updateMetaBadges();
+    } else {
+        doAccidentalScroll();
+    }
+}
+
+function doWater() {
+    markAttendance();
+    const cost = state.atLunch ? 1 : 0; // in class: you refill from a fountain vibe
+    if (cost > 0 && state.money < cost) {
+        log('💸 Sin plata para agua. El calor de Panamá no perdona.', 'bad');
+        return;
+    }
+    state.money -= cost;
+
+    modStat('water', 35);
+    state.waterCount++;
+    updateBadge('bano', state.waterCount);
+    log(cost > 0 ? '💧 Compraste agua' : '💧 Tomaste agua', 'good');
+    setCooldown('water', 3);
+}
+
+
+function doCoffee() {
+    markAttendance();
+    const cost = 2;
+    if (state.money < cost) {
+        log('💸 El café te miró… y tú a él. No hay plata.', 'bad');
+        return;
+    }
+    state.money -= cost;
+
+    modStat('energy', 18);
+    modStat('sanity', -2, true);
+    state.coffeeCount++;
+    updateBadge('cafeina', state.coffeeCount);
+
+    if (state.coffeeCount >= 3) {
+        modStat('sanity', -8, true);
+        log('☕☕☕ Demasiado café. Manos temblando.', 'bad');
+    } else {
+        log('☕ Café: modo supervivencia.', 'good');
+    }
+
+    setCooldown('coffee', 4);
+}
+
+
+function doEat() {
+    if (state.atLunch) {
+        const choices = [];
+
+        choices.push({
+            text: '🥪 Lunch de casa (rápido)',
+            effect: '+Hambre, +Energía (0$)',
+            action: () => {
+                state.foodCount++;
+                updateBadge('lleno', state.foodCount);
+                modStat('hunger', 35);
+                modStat('energy', 6);
+                log('🥪 Te comiste tu lunch. Rápido, limpio, eficiente.', 'good');
+                // Small time cost
+                state.time = Math.min(0.98, state.time + 0.01);
+            }
+        });
+
+        choices.push({
+            text: '🍽️ La Plaza (cafetería)',
+            effect: '+Hambre grande (7$)',
+            action: () => {
+                const cost = 7;
+                if (state.money < cost) {
+                    log('💸 Te quedaste mirando el menú. No hay plata.', 'bad');
+                    modStat('sanity', -3, true);
+                    return;
+                }
+                state.money -= cost;
+                state.foodCount++;
+                updateBadge('lleno', state.foodCount);
+                modStat('hunger', 45);
+                modStat('energy', 10);
+                log('🍽️ Almorzaste en La Plaza. Full, pero feliz.', 'good');
+                state.time = Math.min(0.98, state.time + 0.02);
+            }
+        });
+
+        if (state.deliveryReady) {
+            choices.push({
+                text: '📦 Comer delivery (ya llegó)',
+                effect: '+Hambre grande',
+                action: () => {
+                    state.deliveryReady = false;
+                    state.foodCount++;
+                    updateBadge('lleno', state.foodCount);
+                    modStat('hunger', 50);
+                    modStat('energy', 8);
+                    log('📦 Te comiste el delivery antes de que se enfríe. Win.', 'good');
+                    state.time = Math.min(0.98, state.time + 0.015);
+                }
+            });
+        } else if (!state.deliveryPending) {
+            choices.push({
+                text: '🛵 Pedir delivery (desde COMER)',
+                effect: 'Activa timer',
+                action: () => doDelivery()
+            });
+        } else {
+            choices.push({
+                text: '⏳ Esperar delivery',
+                effect: 'Pasa el tiempo',
+                action: () => {
+                    state.time = Math.min(0.98, state.time + 0.02);
+                    log('⏳ Esperaste… y revisaste el mapa del motorizado 12 veces.', 'story');
+                }
+            });
+        }
+
+        choices.push({
+            text: '🚫 Saltar almuerzo',
+            effect: '+Tiempo ahora, -Hambre luego',
+            action: () => {
+                modStat('hunger', -12, true);
+                modMeta('distraction', 10);
+                log('🚫 “No necesito comer.” (Mentira).', 'warn');
+                // Tiny time gain (you save time)
+                state.time = Math.max(0, state.time - 0.005);
+            }
+        });
+
+        showDecision('🍕', '¿Qué comes?', `Regreso a clase: ${timeToClock(state.lunchEnd)}.`, choices);
+        return;
+    }
+
+    // Eating during class is not available by design.
+    shake();
+}
+
+
+function doDelivery() {
+    if (!state.atLunch) { shake(); return; }
+
+    if (state.deliveryPending) {
+        log('📦 Ya pediste. Ahora toca esperar.', 'warn');
+        return;
+    }
+    if (state.deliveryReady) {
+        log('📦 El delivery ya llegó. Dale COMER.', 'good');
+        return;
+    }
+
+    // Cost and ETA
+    const cost = 8 + Math.floor(Math.random() * 6); // $8..$13
+    if (state.money < cost) {
+        flash('bad');
+        log('💸 No te alcanza para delivery. (RIP).', 'bad');
+        return;
+    }
+
+    // Duration 15..40 minutes
+    const minutes = 15 + Math.floor(Math.random() * 26);
+    const dur = minutes / 480;
+    const arrives = state.time + dur;
+
+    state.money -= cost;
+    state.deliveryCost = cost;
+    state.deliveryPending = true
+    state.deliveryArrivesAt = arrives;
+
+    const arrivalClock = timeToClock(arrives);
+    log(`🛵 Pedido listo. Llega aprox. ${arrivalClock} (costó $${cost}).`, 'story');
+
+    // If arrival is too close to return time, nap becomes unsafe.
+    if (state.deliveryArrivesAt > (state.lunchEnd - 0.03)) {
+        log('⚠️ Si te duermes ahora, casi seguro vuelves tarde.', 'warn');
+    }
+}
+
+
+function doHomework() {
+    if (state.homeworkToday) { shake(); return; }
+    state.homeworkToday = true;
+    state.homework++;
+    modStat('knowledge', 10);
+    if (isEntregaActive()) addEntrega(10, 'direct', true);
+    else addEntrega(3, 'engagement', true);
+
+    modStat('energy', -6, true);
+    modStat('sanity', -4, true);
+    log('📝 ¡Tarea lista!', 'good');
+    spawnFloat('+10 📝', 'good');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// REST DURING CLASS - NOW HAS CONSEQUENCES!
+// ═══════════════════════════════════════════════════════════════
+
+function doRest() {
+    // LUNCH NAP: alarm + risk + explicit wake time feedback
+    if (state.atLunch) {        // If delivery is pending and arrives too close to class return, mark nap as HIGH RISK (but don't hard-block).
+        const napHighRisk = (state.deliveryPending && state.deliveryArrivesAt != null && state.deliveryArrivesAt > (state.lunchEnd - 0.03));
+
+        const now = timeToClock(state.time);
+        const back = timeToClock(state.lunchEnd);
+
+        showDecision('😴', 'Siesta de almuerzo',
+            `${napHighRisk ? '⚠️ Alto riesgo: el delivery llega tarde. ' : ''}Son ${now}. Regreso a clase: ${back}. ¿Pones alarma?`,
+            [
+                {
+                    text: '⏰ Sí, alarma (seguro)',
+                    effect: 'Duermes corto, vuelves a tiempo',
+                    action: () => {
+                        state.isResting = true;
+                        state.inNap = true;
+                        state.napAlarmSet = true;
+                        state.nextWakePromptAt = null;
+
+                        // Nap 20..35 min, but clamp to lunchEnd
+                        const minutes = 20 + Math.floor(Math.random() * 16);
+                        const dur = minutes / 480;
+                        state.restUntilAt = Math.min(state.lunchEnd, state.time + dur);
+
+                        log(`⏰ Pusiste alarma. Siesta ${minutes} min.`, 'good');
+                    }
+                },
+                {
+                    text: '😈 No, sin alarma (riesgo)',
+                    effect: 'Puede salir MUY mal',
+                    action: () => {
+                        state.isResting = true;
+                        state.inNap = true;
+                        state.napAlarmSet = false;
+                        state.nextWakePromptAt = null;
+
+                        const minutes = 25 + Math.floor(Math.random() * 26); // 25..50
+                        const dur = minutes / 480;
+                        let wakeAt = state.time + dur;
+
+                        // If it crosses the return time, roll the fail check.
+                        if (wakeAt > state.lunchEnd) {
+                            const over = wakeAt - state.lunchEnd;
+                            const baseFail = Math.min(0.85, 0.55 + (over * 10));
+                            const failChance = Math.min(0.92, baseFail + (napHighRisk ? 0.20 : 0));
+                            if (Math.random() < failChance) {
+                                // Wake even later: 5..20 minutes after class started
+                                const lateMin = 5 + Math.floor(Math.random() * 16);
+                                wakeAt = state.lunchEnd + (lateMin / 480);
+                            } else {
+                                wakeAt = state.lunchEnd - (2 / 480); // barely on time
+                            }
+                        }
+
+                        state.restUntilAt = Math.min(0.98, wakeAt);
+                        log(`😈 Te dormiste sin alarma (${minutes} min planeados).`, 'warn');
+                    }
+                },
+                {
+                    text: '🚫 Cancelar (no duermo)',
+                    effect: 'Sigo con mi vida',
+                    action: () => {
+                        log('Te quedaste despierto. Respetable.', 'story');
+                    }
+                }
+            ]
+        );
+        return;
+    }
+
+    // CLASS REST: track sleeping in class and consequences
+    if (state.inClass && !state.atLunch) markAttendance();
+
+    if (state.inClass && !state.atLunch) {
+        state.sleepCount++;
+        updateBadge('sleep', state.sleepCount);
+
+        if (state.sleepCount === 1) {
+            log('😴 Cerraste los ojos un momento...', 'story');
+            state.isResting = true;
+            state.nextWakePromptAt = null;
+        } else if (state.sleepCount === 2) {
+            triggerSleepWarning();
+        } else if (state.sleepCount >= 3) {
+            triggerSleepKickout();
+        }
+    } else {
+        state.isResting = true;
+        state.nextWakePromptAt = null;
+        log('😴 Descansando...', 'good');
+    }
+}
+
+
+function doWake() {
+    state.isResting = false;
+    flash('good');
+    log('⏰ ¡Despertaste!', 'good');
+}
+
+
+
+function doScroll() {
+    // You are physically in class, but mentally in TikTok.
+    if (state.inClass && !state.atLunch) markAttendance();
+
+    modStat('sanity', 7, true);
+    modStat('knowledge', -1, true);
+
+    modMeta('distraction', 18);
+    modMeta('teacherSuspicion', 6);
+
+    // Time slips away
+    state.time = Math.min(0.98, state.time + 0.015);
+
+    log('📱 “Solo 10 segundos”… fueron 7 minutos.', 'warn');
+    updateMetaBadges();
+
+    // Delayed consequences: surprise question, or getting caught
+    scheduleForced('popQuiz', 0.05 + Math.random() * 0.05);
+    if (state.teacherSuspicion >= 45 && Math.random() < 0.25) scheduleForced('caughtPhone', 0.04);
+}
+
+function doGossip() {
+    // Mostly for lunch / breaks
+    modStat('sanity', 10, true);
+    modMeta('distraction', 10);
+
+    // Waste time: pushes you closer to returning late
+    const before = state.time;
+    state.time = Math.min(0.98, state.time + 0.03);
+    if (state.atLunch && before < state.lunchEnd && state.time >= state.lunchEnd) {
+        state.lates++;
+        modMeta('teacherSuspicion', 6);
+        log('⏰ Te extendiste… y volviste tarde a clase.', 'bad');
+    }
+
+    // If you're gossiping during class, prof suspicion rises faster
+    if (state.inClass && !state.atLunch) {
+        markAttendance();
+        modMeta('teacherSuspicion', 8);
+        state.participation = Math.max(0, state.participation - 1);
+        log('🗣️ Chisme en clase… el profe ya te ubicó.', 'warn');
+        if (state.teacherSuspicion >= 45 && Math.random() < 0.30) scheduleForced('caughtPhone', 0.04);
+    } else {
+        log('🗣️ Zona de descanso: chisme + risas (y se te fue el tiempo).', 'story');
+    }
+
+    updateMetaBadges();
+}
+
+function doVibe() {
+    // Going outside without a real reason: feels great, costs time, adds risk
+    modStat('sanity', 12, true);
+    modMeta('distraction', 8);
+
+    // Lose time (you disappear)
+    const before = state.time;
+    state.time = Math.min(0.98, state.time + 0.04);
+    if (state.atLunch && before < state.lunchEnd && state.time >= state.lunchEnd) {
+        state.lates++;
+        modMeta('teacherSuspicion', 8);
+        log('⏰ Te fuiste… y volviste tarde a clase.', 'bad');
+    }
+
+    // Weather roulette
+    if (Math.random() < 0.35) {
+        modStat('water', -10, true);
+        modStat('energy', -8, true);
+        log('🌧️ Te cayó un aguacero. Panamá being Panamá.', 'warn');
+    } else {
+        log('🚪 Te fuiste “un momentico” afuera… regresaste más tarde.', 'story');
+    }
+
+    // If you do this during class, prof notices
+    if (state.inClass && !state.atLunch) {
+        markAttendance();
+        modMeta('teacherSuspicion', 10);
+        state.participation = Math.max(0, state.participation - 1);
+        log('👀 Volviste a clase… y te miraron raro.', 'warn');
+    }
+
+    updateMetaBadges();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CONSEQUENCE EVENTS
+// ═══════════════════════════════════════════════════════════════
+
+function triggerSleepWarning() {
+    const prof = state.careerData.prof;
+    showDecision('👨‍🏫', `${prof} te vio`,
+        '"¿Estás durmiendo en mi clase?"',
+        [
+            {
+                text: '😅 "No profe, solo descansaba los ojos"',
+                effect: '-10 Cordura (vergüenza)',
+                action: () => {
+                    modStat('sanity', -10);
+                    log(`😅 ${prof}: "Ajá, claro..."`, 'prof');
+                    state.isResting = false;
+                }
+            },
+            {
+                text: '😴 Seguir durmiendo (RIESGO)',
+                effect: 'Puede que te dejen o te saquen',
+                action: () => {
+                    if (Math.random() < 0.4) {
+                        // Got away with it
+                        modStat('energy', 15);
+                        log('😴 Te dejó... por ahora.', 'warn');
+                        state.isResting = true;
+                    } else {
+                        // Kicked out!
+                        state.sleepCount = 3;
+                        triggerSleepKickout();
+                    }
+                }
+            }
+        ]
+    );
+}
+
+function triggerSleepKickout() {
+    const prof = state.careerData.prof;
+    showDecision('😠', `¡${prof} está FURIOSO!`,
+        '"¡FUERA DE MI CLASE! ¡No vengas a dormir aquí!"',
+        [
+            {
+                text: '😰 Salir de la clase',
+                effect: '-20 Cordura, -5 Conocimiento, NO cuenta asistencia',
+                action: () => {
+                    modStat('sanity', -20);
+                    modStat('knowledge', -5);
+                    if (state.classToday) {
+                        state.classToday = false;
+                        state.classes = Math.max(0, state.classes - 1);
+                    }
+                    state.isResting = false;
+                    shake();
+                    log(`😰 Te sacaron de clase...`, 'bad');
+                    spawnFloat('EXPULSADO', 'bad');
+                }
+            }
+        ]
+    );
+}
+
+function triggerBathroomEvent() {
+    showDecision('🚽', '¡EMERGENCIA BAÑO!',
+        'Tomaste demasiada agua. ¡No aguantas más!',
+        [
+            {
+                text: '🚽 Ir al baño',
+                effect: '-5 Conocimiento',
+                action: () => {
+                    state.waterCount = 0;
+                    updateBadge('bano', 0);
+                    modStat('knowledge', -5);
+                    log('🚽 Fuiste al baño.', 'warn');
+                }
+            },
+            {
+                text: '😬 Aguantar',
+                effect: '-15 Cordura, -10 Energía',
+                action: () => {
+                    modStat('sanity', -15);
+                    modStat('energy', -10);
+                    log('😬 Aguantaste... sufriendo.', 'bad');
+                }
+            }
+        ]
+    );
+}
+
+function triggerCaffeineEvent() {
+    showDecision('☕', '¡CRASH DE CAFEÍNA!',
+        '¡Demasiado café! Tu cuerpo no aguanta.',
+        [
+            {
+                text: '💧 Tomar agua',
+                effect: 'Reduce cafeína',
+                action: () => {
+                    state.coffeeCount = 1;
+                    updateBadge('cafeina', 1);
+                    modStat('water', 20);
+                    log('💧 Tomaste agua. Mejorando...', 'good');
+                }
+            },
+            {
+                text: '😤 Aguantar',
+                effect: '-25 Energía, -15 Cordura',
+                action: () => {
+                    state.coffeeCount = 0;
+                    updateBadge('cafeina', 0);
+                    modStat('energy', -25);
+                    modStat('sanity', -15);
+                    shake();
+                    log('💥 CRASH terrible.', 'bad');
+                }
+            }
+        ]
+    );
+}
+
+function triggerFullEvent() {
+    showDecision('🍔', '¡COMISTE DEMASIADO!',
+        'Te llenaste mucho. Te da sueño...',
+        [
+            {
+                text: '☕ Café para despertar',
+                effect: '+Energía +Cafeína',
+                action: () => {
+                    state.foodCount = 1;
+                    updateBadge('lleno', 1);
+                    modStat('energy', 15);
+                    state.coffeeCount++;
+                    updateBadge('cafeina', state.coffeeCount);
+                    log('☕ Café post-comida.', 'warn');
+                }
+            },
+            {
+                text: '😴 Aceptar el sueño',
+                effect: '-20 Energía',
+                action: () => {
+                    state.foodCount = 1;
+                    updateBadge('lleno', 1);
+                    modStat('energy', -20);
+                    log('😴 Food coma...', 'bad');
+                }
+            }
+        ]
+    );
+}
+
+// RENDER
+function render() {
+    const mins = state.time * 480;
+    const h = Math.floor(mins / 60) + 9;
+    const m = Math.floor(mins % 60);
+    $('clock-display').textContent = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+    $('day-display').textContent = `DÍA ${state.day}`;
+    
+    updateStat('energy', state.energy);
+    updateStat('sanity', state.sanity);
+    updateStat('hunger', state.hunger);
+    updateStat('water', state.water);
+    
+    $('bar-knowledge').style.width = state.knowledge + '%';
+    $('knowledge-pct').textContent = state.knowledge.toFixed(0) + '%';
+
+    $('bar-entrega').style.width = state.entrega + '%';
+    $('entrega-pct').textContent = (isEntregaActive() ? '' : '🔒 ') + state.entrega.toFixed(0) + '%';
+    $('classes').textContent = state.classes;
+    $('homework').textContent = state.homework;
+
+    updateMetaBadges();
+    updateAvatar();
+    updateScreenState();
+}
+
+function updateStat(name, val) {
+    const bar = $('bar-' + name);
+    const valEl = $('val-' + name);
+    bar.style.width = val + '%';
+    valEl.textContent = Math.round(val);
+    bar.className = 'stat-fill';
+    if (val >= 60) bar.classList.add('high');
+    else if (val >= 30) bar.classList.add('med');
+    else if (val >= 15) bar.classList.add('low');
+    else bar.classList.add('critical');
+}
+
+function updateAvatar() {
+    let char, anim, mood, pool, speechClass = '';
+
+    if (state.isResting) {
+        char = CHARS.sleeping; anim = 'sleeping'; mood = 'sleeping'; pool = STORIES.sleeping;
+    } else if (state.coffeeCount >= 2) {
+        char = CHARS.hyper; anim = 'hyper'; mood = 'hyper'; pool = STORIES.hyper; speechClass = 'warning';
+    } else if (state.waterCount >= 2) {
+        char = CHARS.bathroom; anim = 'bathroom'; mood = 'bathroom'; pool = STORIES.bathroom; speechClass = 'warning';
+    } else if (state.energy < 20) {
+        char = CHARS.tired; anim = 'tired'; mood = 'tired'; pool = STORIES.tired; speechClass = 'critical';
+    } else if (state.sanity < 20) {
+        char = CHARS.stressed; anim = 'stressed'; mood = 'stressed'; pool = '¡¡ESTRESADO!!'; speechClass = 'critical';
+    } else if (state.hunger < 20) {
+        char = CHARS.hungry; anim = 'tired'; mood = 'hungry'; pool = STORIES.hungry; speechClass = 'warning';
+    } else if (state.foodCount >= 2) {
+        char = CHARS.tired; anim = 'tired'; mood = 'full'; pool = STORIES.full;
+    } else if (state.atLunch) {
+        char = CHARS.happy; anim = 'idle'; mood = 'lunch'; pool = STORIES.lunch;
+    } else if (state.inClass) {
+        char = CHARS.studying; anim = 'studying'; mood = 'class'; pool = STORIES.class;
+    } else {
+        char = CHARS.normal; anim = 'idle'; mood = 'idle'; pool = 'En Isthmus...';
+    }
+
+    const s = setSpeech(mood, pool, speechClass);
+
+    DOM.avatar.textContent = char;
+    DOM.avatar.className = 'avatar-art ' + anim;
+    DOM.speech.textContent = s.text;
+    DOM.speech.className = 'avatar-speech ' + (s.cssClass || '');
+}
+
+
+function updateScreenState() {
+    DOM.screen.classList.remove('state-normal', 'state-tired', 'state-hyper', 'state-stressed', 'state-critical');
+    
+    if (state.energy < 15 || state.sanity < 15 || state.hunger < 15) {
+        DOM.screen.classList.add('state-critical');
+    } else if (state.coffeeCount >= 2) {
+        DOM.screen.classList.add('state-hyper');
+    } else if (state.energy < 30) {
+        DOM.screen.classList.add('state-tired');
+    } else if (state.sanity < 30) {
+        DOM.screen.classList.add('state-stressed');
+    } else {
+        DOM.screen.classList.add('state-normal');
+    }
+}
+
+// CONTROLS
+
+function updateControls() {
+    const grid = DOM.controls;
+    if (state.screen !== 'main') { grid.innerHTML = ''; return; }
+
+    const ctx = state.awaitingActionDecision;
+    if (!ctx) {
+        grid.innerHTML = `<div class="idle-controls">⏳ El día pasa...<br><span style="font-size:3px;opacity:.7">Espera la próxima decisión</span></div>`;
+        return;
+    }
+
+    const allowed = Array.isArray(ctx.allowed) ? ctx.allowed.slice() : [];
+
+    // Per-action button definitions
+    const defs = {
+        exercise: { icon:'🧱', label:'EJERCICIO', sub:'+Entrega / Base', cls:'primary', span:'span2' },
+        study:    { icon:'📚', label:'ESTUDIAR', sub:'+Conocimiento', cls:'primary', span:'span2' },
+        notes:    { icon:'✏️', label:'APUNTES', sub:'Foco real', cls:'', span:'' },
+        phoneAway:{ icon:'📵', label:'GUARDAR CEL', sub:'-Distracción (FOMO)', cls:'', span:'' },
+        refSearch:{ icon:'🔎', label:'BUSCAR INSPIRACIÓN', sub:'en el celular', cls:'warning', span:'' },
+
+        water:    { icon:'💧', label:'AGUA', sub:'Si aplica', cls:(state.waterCount>=2?'warning':''), span:'' },
+        coffee:   { icon:'☕', label:'CAFÉ', sub:'Si aplica', cls:(state.coffeeCount>=2?'danger':(state.coffeeCount>=1?'warning':'')), span:'' },
+
+        homework: { icon:'📝', label:(state.homeworkToday?'HECHO ✓':'TAREA'), sub:'+Entrega', cls:'', span:'' },
+        rest:     { icon:'😴', label:'DESCANSAR', sub:(state.sleepCount>=1?`⚠️ ${state.sleepCount}/3`:'Riesgo/Recupera'), cls:(state.sleepCount>=1?'warning':''), span:'span2' },
+
+        eat:      { icon:'🍕', label:'COMER', sub:'Almuerzo', cls:'', span:'wide' },
+        delivery: { icon:'📦', label:(state.deliveryReady ? 'DELIVERY LISTO' : (state.deliveryPending ? 'ESPERANDO…' : 'DELIVERY')), sub:(state.deliveryArrivesAt != null ? timeToClock(state.deliveryArrivesAt) : 'Timer'), cls:'', span:'wide' },
+
+        gossip:   { icon:'🗣️', label:'CHISME', sub:'+Vibes, -Tiempo', cls:'warning', span:'wide' },
+        vibe:     { icon:'🚪', label:'AFUERA', sub:'+Cordura, riesgo', cls:'warning', span:'wide' },
+        scroll:   { icon:'📱', label:'SCROLL', sub:'+Cordura ahora', cls:'danger', span:'wide' },
+
+        wake:     { icon:'⏰', label:'DESPERTAR', sub:'', cls:'', span:'wide' },
+    };
+
+    function isDisabled(type) {
+        // Only render allowed actions, but still disable if resources block them.
+        if (type === 'homework' && state.homeworkToday) return true;
+        if (type === 'delivery' && state.money < 8) return true;
+        if (type === 'coffee' && state.money < 2) return true;
+        if (type === 'water' && state.atLunch && state.money < 1) return true;
+        // No other hard locks: keep agency.
+        return false;
+    }
+
+    // Ensure the player never sees a prompt with only temptations.
+    // (Guardrail is also in openActionPrompt, but double protection here.)
+    const enabled = allowed.filter(t => defs[t] && !isDisabled(t));
+    if (enabled.length === 0) {
+        // Fallback: show APUNTES
+        allowed.unshift('notes');
+    }
+
+    const order = ['exercise','study','notes','phoneAway','refSearch','coffee','water','homework','rest','eat','delivery','gossip','vibe','scroll','wake'];
+
+    const html = [];
+    for (const key of order) {
+        if (!allowed.includes(key)) continue;
+        const d = defs[key];
+        if (!d) continue;
+        const dis = isDisabled(key) ? 'disabled' : '';
+        const cls = ['ctrl-btn', d.cls, d.span].filter(Boolean).join(' ');
+        const badge = (key === 'coffee' && state.coffeeCount>=1) ? `<span class="btn-badge">${state.coffeeCount}</span>`
+                    : (key === 'water' && state.waterCount>=1) ? `<span class="btn-badge">${state.waterCount}</span>`
+                    : (key === 'eat' && state.foodCount>=1) ? `<span class="btn-badge">${state.foodCount}</span>`
+                    : (key === 'rest' && state.sleepCount>=1) ? `<span class="btn-badge">${state.sleepCount}</span>`
+                    : '';
+
+        html.push(`
+            <button class="${cls}" onclick="action('${key}')" ${dis}>
+                <span class="btn-icon">${d.icon}</span>
+                <span class="btn-label">${d.label}</span>
+                ${d.sub ? `<span class="btn-sub">${d.sub}</span>` : ''}
+                ${badge}
+            </button>
+        `);
+    }
+
+    grid.innerHTML = html.join('');
+}
+
+
+// WEEKEND
+function weekendAction(type) {
+    if (state.weekendActions <= 0) return;
+    state.weekendActions--;
+    $('weekend-actions').textContent = state.weekendActions;
+    flash('good');
+    
+    switch(type) {
+        case 'sleep': state.energy = clamp(state.energy + 60); log('😴 Dormiste como si no hubiera lunes.', 'good'); break;
+        case 'friends': state.sanity = clamp(state.sanity + 50); state.energy = clamp(state.energy - 10); state.distraction = clamp(state.distraction + 20); state.weekendParty++; log('🎉 Saliste con la gente. Vibes up, sueño down.', 'good'); break;
+        case 'study': state.knowledge = clamp(state.knowledge + 15); state.sanity = clamp(state.sanity - 10); log('📖 Estudiaste. Tu alma grita, pero tu nota agradece.', 'good'); break;
+        case 'chill': state.energy = clamp(state.energy + 20); state.sanity = clamp(state.sanity + 20); log('🎮 Touch grass completado. Vibes restauradas.', 'good'); break;
+    }
+}
+
+function endWeekend() {
+    state.dayOfWeek = 0;
+    state.coffeeCount = 0;
+    state.waterCount = 0;
+    state.foodCount = 0;
+    state.sleepCount = 0;
+    ['cafeina', 'bano', 'lleno', 'sleep'].forEach(b => updateBadge(b, 0));
+    flash('good');
+    log('━━ SEMANA 2: LA CRUDA REALIDAD ━━', 'good');
+    showScreen('main');
+    dayStartEvents();
+    bumpNextPrompt(0.02, 0.04);
+    requestAnimationFrame(gameLoop);
+}
+
+// ENTREGA
+function showEntrega() {
+    state.gameOver = true;
+    
+    // Nota final (asistencia + participación + trabajos + entrega final)
+    let score = (state.entrega * 0.50) + (state.knowledge * 0.20) + (state.classes * 2) + (state.homework * 2) + (state.participation * 1.5);
+    // Foundation helps (week 1 habits pay off), distraction & suspicion hurt
+    score -= state.lates * 3;
+    score -= state.absences * 25;
+    score += state.foundation * 0.15;
+    score -= Math.max(0, state.distraction - 35) * 0.10;
+    score -= state.teacherSuspicion * 0.12;
+    score = clamp(score);
+
+    let label = '';
+    let cls = '';
+    let tagline = '';
+    let taglineCls = '';
+
+    if (state.forceFail) {
+        label = '✗ REPROBADO';
+        cls = 'fail';
+        score = Math.min(score, 49);
+        tagline = 'El inicio es para todos.<br>La gloria es para pocos.<br><strong>¿La próxima?</strong>';
+    } else if (score >= 80) {
+        label = '★ SOBRESALIENTE';
+        cls = 'honor';
+        tagline = 'La gloria es para pocos.<br><strong>Y hoy, es tuya.</strong>';
+        taglineCls = 'honor';
+    } else if (score >= 50) {
+        label = '✓ APROBADO';
+        cls = 'pass';
+        tagline = 'Sobreviviste.<br>El inicio fue para todos.<br><strong>El final, para ti.</strong>';
+    } else {
+        label = '✗ REPROBADO';
+        cls = 'fail';
+        tagline = 'El inicio es para todos.<br>La gloria es para pocos.<br><strong>¿La próxima?</strong>';
+    }
+
+    $('grade-display').textContent = label;
+    $('grade-display').className = 'grade-display ' + cls;
+    
+    // Set entrega tagline
+    const taglineEl = $('entrega-tagline');
+    if (taglineEl) {
+        taglineEl.innerHTML = tagline;
+        taglineEl.className = 'end-tagline' + (taglineCls ? ' ' + taglineCls : '');
+    }
+
+    const reasonLine = state.forceFail ? `<br><span style="font-size:6px;opacity:.9;">${state.forceReason}</span>` : '';
+
+    $('final-stats').innerHTML = `
+        📋 Entrega final: ${state.entrega.toFixed(0)}%<br>
+        🎓 Conocimiento: ${state.knowledge.toFixed(0)}%<br>
+        📚 Asistencia: ${state.classes}/10<br>
+        🗣️ Participación: ${state.participation}<br>
+        📝 Trabajos: ${state.homework}<br>        📱 Distracción: ${state.distraction.toFixed(0)}%<br>
+        👀 Sospecha: ${state.teacherSuspicion.toFixed(0)}%<br>
+        🧱 Fundación: ${state.foundation.toFixed(0)}%<br>
+
+        ⏰ Tardanzas: ${state.lates}<br>
+        ❌ Faltas: ${state.absences}${reasonLine}<br><br>
+        <strong>NOTA: ${score.toFixed(0)}/100</strong>
+    `;
+    
+    flash('good');
+    showScreen('entrega');
+}
+
+// Random events
+setInterval(() => {
+    if (state.paused || state.screen !== 'main') return;
+    if (Math.random() > 0.10) return;
+
+    // If you are very distracted, there's a chance you'll get caught.
+    if (state.inClass && !state.atLunch && state.distraction >= 65 && Math.random() < 0.22) {
+        state.forcedEventAt = state.time;
+        state.forcedEventType = 'caughtPhone';
+        return;
+    }
+
+    // Professor question frequency increases with suspicion
+    const base = 0.45;
+    const suspicionBoost = state.teacherSuspicion / 220;
+    const chance = base + suspicionBoost;
+
+    if (state.inClass && !state.atLunch && state.knowledge > 12 && Math.random() < chance) {
+        // Route through forced events so lunch can defer it cleanly.
+        scheduleForced('profQuestion', 0.0);
+        return;
+    }
+
+}, 8000);
+</script>
+</body>
+</html>
